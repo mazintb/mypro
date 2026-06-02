@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // دالة: هل المستخدم مسجل دخول؟
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // دالة: جلب صلاحية المستخدم من Firestore
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    // دالة: هل الحساب نشط؟
+    function isActive() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active';
+    }
+
+    function isOwner()     { return isSignedIn() && isActive() && getRole() == 'owner'; }
+    function canWrite()    { return isSignedIn() && isActive() && (getRole() == 'owner' || getRole() == 'assistant'); }
+    function canRead()     { return isSignedIn() && isActive(); }
+
+    // ── ملفات المستخدمين ──
+    match /users/{uid} {
+      allow read:  if canRead();
+      allow write: if isOwner() || request.auth.uid == uid;
+    }
+
+    // ── بيانات المنصة الرئيسية ──
+    match /platform/{doc} {
+      allow read:  if canRead();
+      allow write: if canWrite();
+    }
+  }
+}
