@@ -5,12 +5,12 @@ import { getFirestore } from 'firebase/firestore';
 // ⚠️ استبدل هذه القيم بقيم مشروعك من Firebase Console
 // ⚠️ Replace these values with your Firebase project config
 const firebaseConfig = {
-  apiKey:            "PASTE_YOUR_API_KEY_HERE",
-  authDomain:        "PASTE_YOUR_AUTH_DOMAIN_HERE",
-  projectId:         "PASTE_YOUR_PROJECT_ID_HERE",
-  storageBucket:     "PASTE_YOUR_STORAGE_BUCKET_HERE",
-  messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID_HERE",
-  appId:             "PASTE_YOUR_APP_ID_HERE"
+  apiKey: "AIzaSyCKvJIqxq8u_nVouPgSrRS6R5ca25SRGX0",
+  authDomain: "mypro-d522e.firebaseapp.com",
+  projectId: "mypro-d522e",
+  storageBucket: "mypro-d522e.firebasestorage.app",
+  messagingSenderId: "997512009251",
+  appId: "1:997512009251:web:b972d91d1d11cf64d44396"
 };
 
 const app = initializeApp(firebaseConfig);
