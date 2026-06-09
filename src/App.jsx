@@ -328,7 +328,7 @@ function StatCard({label,value,icon:Icon,iconText,color,T}){
       </div>
       <div style={{minWidth:0,flex:1}}>
         <p style={{margin:0,fontSize:'0.65rem',color:T.textMuted,fontWeight:'600',letterSpacing:'0.3px',textTransform:'uppercase'}}>{label}</p>
-        <p style={{margin:'2px 0 0',fontSize:'0.85rem',fontWeight:'800',color:T.text,wordBreak:'break-word',letterSpacing:'-0.3px',lineHeight:'1.3'}}>{value}</p>
+        <p style={{margin:'3px 0 0',fontSize:'clamp(0.7rem,2.8vw,0.85rem)',fontWeight:'800',color:T.text,whiteSpace:'nowrap',letterSpacing:'-0.3px',lineHeight:'1.3'}}>{value}</p>
       </div>
     </div>
   );
