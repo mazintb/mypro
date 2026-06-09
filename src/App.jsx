@@ -145,14 +145,6 @@ const todayStr=()=>new Date().toISOString().split('T')[0];
 const daysUntil=d=>d?Math.ceil((new Date(d)-new Date())/86400000):null;
 const fmt=n=>Math.round(n||0).toLocaleString('ar-SA');
 const fmtC=(n,lang)=>`${fmt(n)} ${lang==='ar'?'ريال':'SAR'}`;
-const fmtShort=(n,lang)=>{
-  const v=Math.round(n||0);
-  const sar=lang==='ar'?'ريال':'SAR';
-  if(v>=1000000000)return `${(v/1000000000).toFixed(1)} ${lang==='ar'?'مليار':' B'} ${sar}`;
-  if(v>=1000000)return `${(v/1000000).toFixed(2)} ${lang==='ar'?'مليون':' M'} ${sar}`;
-  if(v>=1000)return `${(v/1000).toFixed(1)} ${lang==='ar'?'ألف':' K'} ${sar}`;
-  return `${fmt(v)} ${sar}`;
-};
 const fmtDate=(d,lang)=>d?new Date(d).toLocaleDateString(lang==='ar'?'ar-SA':'en-US'):'—';
 const pct=(a,b)=>b?((a/b)*100).toFixed(1):'0.0';
 const MONTHS_AR=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -321,19 +313,22 @@ function Badge({color,children}){
   );
 }
 
-function StatCard({label,value,icon:Icon,color,T}){
+function StatCard({label,value,icon:Icon,iconText,color,T}){
   return(
     <div style={{
-      background:T.surface, borderRadius:'18px', padding:'14px 14px',
-      boxShadow:T.cardShadow, display:'flex', alignItems:'center', gap:'12px',
+      background:T.surface, borderRadius:'18px', padding:'14px',
+      boxShadow:T.cardShadow, display:'flex', alignItems:'flex-start', gap:'12px',
       border:`1px solid ${T.border}`,
     }}>
       <div style={{width:'42px',height:'42px',borderRadius:'13px',background:color+'15',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-        <Icon size={19} color={color}/>
+        {iconText
+          ? <span style={{fontSize:'1rem',fontWeight:'900',color,fontFamily:'-apple-system,sans-serif'}}>{iconText}</span>
+          : <Icon size={19} color={color}/>
+        }
       </div>
-      <div style={{minWidth:0}}>
+      <div style={{minWidth:0,flex:1}}>
         <p style={{margin:0,fontSize:'0.65rem',color:T.textMuted,fontWeight:'600',letterSpacing:'0.3px',textTransform:'uppercase'}}>{label}</p>
-        <p style={{margin:'2px 0 0',fontSize:'0.88rem',fontWeight:'800',color:T.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.4px'}}>{value}</p>
+        <p style={{margin:'2px 0 0',fontSize:'0.85rem',fontWeight:'800',color:T.text,wordBreak:'break-word',letterSpacing:'-0.3px',lineHeight:'1.3'}}>{value}</p>
       </div>
     </div>
   );
@@ -494,10 +489,10 @@ function Dashboard({data,lang,t,T}){
       </div>
       {/* KPIs */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-        <StatCard label={lang==='ar'?'الدخل الشهري':'Monthly Income'} value={fmtShort(mInc,lang)} icon={TrendingUp} color={T.success} T={T}/>
-        <StatCard label={lang==='ar'?'المصاريف الشهرية':'Monthly Expenses'} value={fmtShort(mExp,lang)} icon={TrendingDown} color={T.danger} T={T}/>
-        <StatCard label={lang==='ar'?'صافي شهري':'Net Monthly'} value={fmtShort(mInc-mExp,lang)} icon={DollarSign} color={mInc>=mExp?T.success:T.danger} T={T}/>
-        <StatCard label={t.totalAssets} value={fmtShort(totalAssets,lang)} icon={Briefcase} color={T.gold} T={T}/>
+        <StatCard label={lang==='ar'?'الدخل الشهري':'Monthly Income'} value={fmtC(mInc,lang)} icon={TrendingUp} color={T.success} T={T}/>
+        <StatCard label={lang==='ar'?'المصاريف الشهرية':'Monthly Expenses'} value={fmtC(mExp,lang)} icon={TrendingDown} color={T.danger} T={T}/>
+        <StatCard label={lang==='ar'?'صافي شهري':'Net Monthly'} value={fmtC(mInc-mExp,lang)} iconText='ر' color={mInc>=mExp?T.success:T.danger} T={T}/>
+        <StatCard label={t.totalAssets} value={fmtC(totalAssets,lang)} icon={Briefcase} color={T.gold} T={T}/>
       </div>
       {/* Alerts */}
       {alerts.length>0&&(
