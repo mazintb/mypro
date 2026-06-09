@@ -19,20 +19,22 @@ import {
 
 // ═══ THEMES ═══
 const DARK = {
-  bg:'#060d1a', surface:'#0c1a35', surface2:'#0f2040',
-  border:'#1e3a6a', borderGold:'#c9a84c33',
+  bg:'#050c1a', surface:'#0b1830', surface2:'#0e1e3a',
+  border:'#1a3460', borderGold:'#c9a84c22',
   gold:'#c9a84c', goldLight:'#e8d48a', goldDark:'#8a6520',
-  text:'#dce8f8', textMuted:'#6a88b4', textDim:'#3a5478',
-  success:'#22c55e', danger:'#ef4444', warning:'#f59e0b', info:'#3b82f6',
-  tabBar:'#0c1a35', cardShadow:'none', inputBg:'#0f2040',
+  text:'#e4eeff', textMuted:'#5a7aaa', textDim:'#2e4a70',
+  success:'#30d158', danger:'#ff453a', warning:'#ffd60a', info:'#0a84ff',
+  tabBar:'#0b1830', cardShadow:'none', inputBg:'#0e1e3a',
+  glassCard:'rgba(255,255,255,0.04)', glassBorder:'rgba(255,255,255,0.07)',
 };
 const LIGHT = {
   bg:'#F2F2F7', surface:'#FFFFFF', surface2:'#F2F2F7',
-  border:'#E5E5EA', borderGold:'#c9a84c55',
+  border:'#E5E5EA', borderGold:'#c9a84c44',
   gold:'#B07D1A', goldLight:'#D4A017', goldDark:'#7a5510',
   text:'#1C1C1E', textMuted:'#6C6C70', textDim:'#AEAEB2',
   success:'#34C759', danger:'#FF3B30', warning:'#FF9500', info:'#007AFF',
-  tabBar:'rgba(249,249,249,0.95)', cardShadow:'0 1px 4px rgba(0,0,0,0.08)', inputBg:'#F2F2F7',
+  tabBar:'rgba(249,249,249,0.95)', cardShadow:'0 1px 3px rgba(0,0,0,0.07)', inputBg:'#F2F2F7',
+  glassCard:'rgba(255,255,255,0.9)', glassBorder:'rgba(0,0,0,0.06)',
 };
 
 const TR = {
@@ -226,11 +228,12 @@ function Ta({value,onChange,rows=2,T}){
 
 function Modal({title,onClose,children,T}){
   return(
-    <div style={{position:'fixed',inset:0,zIndex:50,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,0.5)',backdropFilter:'blur(8px)'}}>
-      <div style={{background:T.surface,borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'600px',maxHeight:'92vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 -8px 40px rgba(0,0,0,0.2)'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 20px 14px',borderBottom:`1px solid ${T.border}`}}>
-          <h3 style={{color:T.text,margin:0,fontWeight:'700',fontSize:'1.05rem'}}>{title}</h3>
-          <button onClick={onClose} style={{background:T.surface2,border:'none',color:T.textMuted,cursor:'pointer',padding:'6px',borderRadius:'50%',display:'flex',width:'28px',height:'28px',alignItems:'center',justifyContent:'center'}}><X size={15}/></button>
+    <div style={{position:'fixed',inset:0,zIndex:50,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,0.55)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)'}}>
+      <div style={{background:T.surface,borderRadius:'26px 26px 0 0',width:'100%',maxWidth:'600px',maxHeight:'93vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 -12px 50px rgba(0,0,0,0.3)',border:`1px solid ${T.border}`,animation:'slideUp 0.28s cubic-bezier(0.34,1.56,0.64,1)'}}>
+        <div style={{width:'36px',height:'4px',background:T.border,borderRadius:'2px',margin:'12px auto 0'}}/>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 20px 12px',borderBottom:`1px solid ${T.border}`}}>
+          <h3 style={{color:T.text,margin:0,fontWeight:'700',fontSize:'1rem',letterSpacing:'-0.3px'}}>{title}</h3>
+          <button onClick={onClose} style={{background:T.surface2,border:`1px solid ${T.border}`,color:T.textMuted,cursor:'pointer',borderRadius:'50%',display:'flex',width:'30px',height:'30px',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}><X size={14}/></button>
         </div>
         <div style={{overflowY:'auto',flex:1,padding:'20px'}}>{children}</div>
       </div>
@@ -260,11 +263,17 @@ function Badge({color,children}){
 
 function StatCard({label,value,icon:Icon,color,T}){
   return(
-    <div style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow,display:'flex',alignItems:'center',gap:'12px'}}>
-      <div style={{width:'42px',height:'42px',borderRadius:'12px',background:color+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Icon size={20} color={color}/></div>
+    <div style={{
+      background:T.surface,borderRadius:'18px',padding:'15px',
+      boxShadow:T.cardShadow,display:'flex',alignItems:'center',gap:'12px',
+      border:`1px solid ${T.border}`,
+    }}>
+      <div style={{width:'44px',height:'44px',borderRadius:'14px',background:color+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,border:`1px solid ${color}22`}}>
+        <Icon size={20} color={color}/>
+      </div>
       <div style={{minWidth:0}}>
-        <p style={{margin:0,fontSize:'0.7rem',color:T.textMuted}}>{label}</p>
-        <p style={{margin:0,fontSize:'0.92rem',fontWeight:'800',color:T.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{value}</p>
+        <p style={{margin:0,fontSize:'0.68rem',color:T.textMuted,fontWeight:'500',letterSpacing:'0.2px'}}>{label}</p>
+        <p style={{margin:0,fontSize:'0.9rem',fontWeight:'800',color:T.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.3px'}}>{value}</p>
       </div>
     </div>
   );
@@ -332,11 +341,17 @@ function Dashboard({data,lang,t,T}){
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
       {/* Hero */}
-      <div style={{background:`linear-gradient(135deg,${T.goldDark},${T.gold})`,borderRadius:'20px',padding:'24px',textAlign:'center',position:'relative',overflow:'hidden'}}>
-        <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.15)',pointerEvents:'none'}}/>
-        <p style={{color:'rgba(255,255,255,0.8)',fontSize:'0.8rem',margin:'0 0 4px'}}>{t.netWorth}</p>
-        <p style={{color:'#fff',fontSize:'2.4rem',fontWeight:'900',margin:'0 0 2px',letterSpacing:'-1px'}}>{fmt(totalAssets)}</p>
-        <p style={{color:'rgba(255,255,255,0.7)',fontSize:'0.75rem',margin:0}}>{lang==='ar'?'ريال سعودي':'Saudi Riyal'}</p>
+      <div style={{
+        background:`linear-gradient(145deg,${T.goldDark} 0%,${T.gold} 55%,#e8c96a 100%)`,
+        borderRadius:'24px',padding:'28px 24px',textAlign:'center',
+        position:'relative',overflow:'hidden',
+        boxShadow:`0 8px 32px ${T.gold}40`,
+      }}>
+        <div style={{position:'absolute',top:'-30%',right:'-10%',width:'180px',height:'180px',borderRadius:'50%',background:'rgba(255,255,255,0.08)',pointerEvents:'none'}}/>
+        <div style={{position:'absolute',bottom:'-20%',left:'-5%',width:'120px',height:'120px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',pointerEvents:'none'}}/>
+        <p style={{color:'rgba(255,255,255,0.75)',fontSize:'0.78rem',margin:'0 0 6px',fontWeight:'600',letterSpacing:'0.5px',textTransform:'uppercase'}}>{t.netWorth}</p>
+        <p style={{color:'#fff',fontSize:'2.6rem',fontWeight:'900',margin:'0 0 4px',letterSpacing:'-1.5px',textShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>{fmt(totalAssets)}</p>
+        <p style={{color:'rgba(255,255,255,0.65)',fontSize:'0.75rem',margin:0,fontWeight:'500'}}>{lang==='ar'?'ريال سعودي':'Saudi Riyal'}</p>
       </div>
       {/* KPIs */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
@@ -1156,16 +1171,19 @@ export default function App(){
   const goldGrad=`linear-gradient(135deg,${T.goldDark},${T.gold})`;
 
   return(
-    <div dir={dir} style={{minHeight:'100vh',background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif'}}>
+    <div dir={dir} style={{minHeight:'100vh',background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue","Segoe UI",system-ui,sans-serif'}}>
       <style>{`
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
         @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
         ::-webkit-scrollbar{width:3px;height:3px}
         ::-webkit-scrollbar-track{background:transparent}
         ::-webkit-scrollbar-thumb{background:${T.border};border-radius:2px}
         input[type=date]::-webkit-calendar-picker-indicator{filter:${isDark?'invert(0.7)':'none'}}
         select option{background:${T.surface};color:${T.text}}
         @media print{header,footer,nav{display:none!important}}
+        button:active{transform:scale(0.97);transition:transform 0.1s}
+        main > *{animation:fadeIn 0.2s ease}
       `}</style>
 
       {/* HEADER */}
@@ -1198,16 +1216,36 @@ export default function App(){
         {renderPage()}
       </main>
 
-      {/* BOTTOM TAB BAR */}
-      <nav style={{position:'fixed',bottom:0,left:0,right:0,height:'72px',background:isDark?`${T.tabBar}ee`:`${T.tabBar}f5`,borderTop:`1px solid ${T.border}`,display:'flex',alignItems:'center',justifyContent:'space-around',backdropFilter:'blur(20px)',zIndex:30}}>
+      {/* BOTTOM TAB BAR — iOS style */}
+      <nav style={{
+        position:'fixed',bottom:0,left:0,right:0,
+        height:'80px',paddingBottom:'env(safe-area-inset-bottom,8px)',
+        background:isDark?'rgba(10,20,42,0.88)':'rgba(249,249,249,0.92)',
+        borderTop:`1px solid ${T.border}`,
+        display:'flex',alignItems:'center',justifyContent:'space-around',
+        backdropFilter:'blur(28px)',WebkitBackdropFilter:'blur(28px)',zIndex:30
+      }}>
         {BOTTOM_TABS.map(({id,icon:Icon})=>{
           const isActive=activeTab===id;
           const label={dashboard:t.dashboard,assets:t.assets,operations:t.operationsTab,finance:t.financeTab,more:t.more}[id];
           return(
-            <button key={id} onClick={()=>handleTabPress(id)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',background:'none',border:'none',color:isActive?T.gold:T.textMuted,cursor:'pointer',fontFamily:'inherit',flex:1,padding:'8px 0',transition:'color 0.15s',position:'relative'}}>
-              {id==='dashboard'&&alertCount>0&&!isActive&&<span style={{position:'absolute',top:'4px',[lang==='ar'?'left':'right']:'calc(50% - 14px)',width:'8px',height:'8px',background:T.danger,borderRadius:'50%'}}/>}
-              <Icon size={isActive?22:20} strokeWidth={isActive?2.5:1.8}/>
-              <span style={{fontSize:'0.62rem',fontWeight:isActive?'700':'500'}}>{label}</span>
+            <button key={id} onClick={()=>handleTabPress(id)} style={{
+              display:'flex',flexDirection:'column',alignItems:'center',gap:'4px',
+              background:'none',border:'none',
+              color:isActive?T.gold:T.textMuted,
+              cursor:'pointer',fontFamily:'inherit',flex:1,padding:'8px 0',
+              transition:'color 0.15s',position:'relative',
+            }}>
+              {id==='dashboard'&&alertCount>0&&!isActive&&<span style={{position:'absolute',top:'6px',[lang==='ar'?'left':'right']:'calc(50% - 16px)',width:'9px',height:'9px',background:T.danger,borderRadius:'50%',border:`2px solid ${T.bg}`}}/>}
+              <div style={{
+                width:isActive?'44px':'36px',height:isActive?'30px':'28px',
+                background:isActive?T.gold+'18':'transparent',
+                borderRadius:'10px',display:'flex',alignItems:'center',justifyContent:'center',
+                transition:'all 0.2s',
+              }}>
+                <Icon size={20} strokeWidth={isActive?2.5:1.8}/>
+              </div>
+              <span style={{fontSize:'0.6rem',fontWeight:isActive?'700':'400',letterSpacing:'-0.2px'}}>{label}</span>
             </button>
           );
         })}
