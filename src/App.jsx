@@ -145,6 +145,14 @@ const todayStr=()=>new Date().toISOString().split('T')[0];
 const daysUntil=d=>d?Math.ceil((new Date(d)-new Date())/86400000):null;
 const fmt=n=>Math.round(n||0).toLocaleString('ar-SA');
 const fmtC=(n,lang)=>`${fmt(n)} ${lang==='ar'?'ريال':'SAR'}`;
+const fmtShort=(n,lang)=>{
+  const v=Math.round(n||0);
+  const sar=lang==='ar'?'ريال':'SAR';
+  if(v>=1000000000)return `${(v/1000000000).toFixed(1)} ${lang==='ar'?'مليار':' B'} ${sar}`;
+  if(v>=1000000)return `${(v/1000000).toFixed(2)} ${lang==='ar'?'مليون':' M'} ${sar}`;
+  if(v>=1000)return `${(v/1000).toFixed(1)} ${lang==='ar'?'ألف':' K'} ${sar}`;
+  return `${fmt(v)} ${sar}`;
+};
 const fmtDate=(d,lang)=>d?new Date(d).toLocaleDateString(lang==='ar'?'ar-SA':'en-US'):'—';
 const pct=(a,b)=>b?((a/b)*100).toFixed(1):'0.0';
 const MONTHS_AR=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -456,7 +464,18 @@ function Dashboard({data,lang,t,T}){
   (data.operations||[]).filter(o=>o.status==='pending').forEach(o=>{const d=daysUntil(o.nextDue||o.date);if(d!==null&&d<=7)alerts.push({label:(lang==='ar'?OP_T.ar:OP_T.en)[o.type]||o.type,name:o.description,days:d,color:d<=2?T.danger:T.warning});});
   (data.loansGiven||[]).filter(l=>l.status==='active').forEach(l=>{const d=daysUntil(l.returnDate);if(d!==null&&d<=30)alerts.push({label:lang==='ar'?'قرض مُعطى':'Loan due',name:l.borrowerName,days:d,color:d<=7?T.danger:T.warning});});
   alerts.sort((a,b)=>a.days-b.days);
-  const chartData=Array.from({length:6},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-5+i);const m=d.getMonth(),y=d.getFullYear();const mn=lang==='ar'?MONTHS_AR[m]:MONTHS_EN[m];const inc=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='income'&&td.getMonth()===m&&td.getFullYear()===y;}).reduce((s,tx)=>s+tx.amount,0);const exp=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='expense'&&td.getMonth()===m&&td.getFullYear()===y;}).reduce((s,tx)=>s+tx.amount,0);return{name:mn,دخل:inc,مصاريف:exp};});
+  // Build chart from months that have actual data, fallback to last 6 calendar months
+  const allMonths=[...new Set(tr.map(tx=>tx.date?.substring(0,7)).filter(Boolean))].sort();
+  const chartMonths=allMonths.length>=2
+    ? allMonths.slice(-6)
+    : Array.from({length:6},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-5+i);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;});
+  const chartData=chartMonths.map(ym=>{
+    const [y,m]=ym.split('-').map(Number);
+    const mn=lang==='ar'?MONTHS_AR[m-1]:MONTHS_EN[m-1];
+    const inc=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='income'&&td.getMonth()===m-1&&td.getFullYear()===y;}).reduce((s,tx)=>s+tx.amount,0);
+    const exp=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='expense'&&td.getMonth()===m-1&&td.getFullYear()===y;}).reduce((s,tx)=>s+tx.amount,0);
+    return{name:mn,دخل:inc,مصاريف:exp};
+  });
   const pieData=[{name:lang==='ar'?'عقارات':'Real Estate',value:re.reduce((s,p)=>s+p.value,0)},{name:lang==='ar'?'شركات':'Companies',value:co.reduce((s,c)=>s+c.capital,0)},{name:lang==='ar'?'مركبات':'Vehicles',value:ve.reduce((s,v)=>s+v.value,0)},{name:lang==='ar'?'استثمارات':'Investments',value:iv.reduce((s,i)=>s+i.currentValue,0)}].filter(d=>d.value>0);
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
@@ -475,10 +494,10 @@ function Dashboard({data,lang,t,T}){
       </div>
       {/* KPIs */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-        <StatCard label={lang==='ar'?'الدخل الشهري المتوقع':'Est. Monthly Income'} value={fmtC(mInc,lang)} icon={ArrowUpCircle} color={T.success} T={T}/>
-        <StatCard label={lang==='ar'?'المصاريف الشهرية':'Monthly Expenses'} value={fmtC(mExp,lang)} icon={ArrowDownCircle} color={T.danger} T={T}/>
-        <StatCard label={lang==='ar'?'صافي شهري':'Net Monthly'} value={fmtC(mInc-mExp,lang)} icon={TrendingUp} color={mInc>=mExp?T.success:T.danger} T={T}/>
-        <StatCard label={t.totalAssets} value={fmtC(totalAssets,lang)} icon={Wallet} color={T.gold} T={T}/>
+        <StatCard label={lang==='ar'?'الدخل الشهري':'Monthly Income'} value={fmtShort(mInc,lang)} icon={TrendingUp} color={T.success} T={T}/>
+        <StatCard label={lang==='ar'?'المصاريف الشهرية':'Monthly Expenses'} value={fmtShort(mExp,lang)} icon={TrendingDown} color={T.danger} T={T}/>
+        <StatCard label={lang==='ar'?'صافي شهري':'Net Monthly'} value={fmtShort(mInc-mExp,lang)} icon={DollarSign} color={mInc>=mExp?T.success:T.danger} T={T}/>
+        <StatCard label={t.totalAssets} value={fmtShort(totalAssets,lang)} icon={Briefcase} color={T.gold} T={T}/>
       </div>
       {/* Alerts */}
       {alerts.length>0&&(
@@ -1255,7 +1274,20 @@ export default function App(){
   if(loading||!data)return spinner(lang==='ar'?'جاري التحميل...':'Loading...');
 
   const dir=lang==='ar'?'rtl':'ltr';
-  const alertCount=(()=>{let c=0;(data?.realEstate||[]).forEach(p=>{const units=p.hasUnits?p.units:(p.status==='occupied'?[p]:[]);units.filter(u=>u.status==='occupied').forEach(u=>{const d=daysUntil(u.rent?.nextDue);if(d!==null&&d<=30)c++;});});(data?.vehicles||[]).forEach(v=>{const d=daysUntil(v.insurance?.expiryDate);if(d!==null&&d<=30)c++;});return c;})();
+  const alertCount=(()=>{
+    let c=0;
+    (data?.realEstate||[]).forEach(p=>{
+      const units=p.hasUnits?p.units:(p.status==='occupied'?[p]:[]);
+      units.filter(u=>u.status==='occupied').forEach(u=>{
+        const d=daysUntil(u.rent?.nextDue);if(d!==null&&d<=30)c++;
+        const dc=daysUntil(u.contract?.endDate);if(dc!==null&&dc>=0&&dc<=60)c++;
+      });
+    });
+    (data?.vehicles||[]).forEach(v=>{const d=daysUntil(v.insurance?.expiryDate);if(d!==null&&d<=30)c++;});
+    (data?.operations||[]).filter(o=>o.status==='pending').forEach(o=>{const d=daysUntil(o.nextDue||o.date);if(d!==null&&d<=7)c++;});
+    (data?.loansGiven||[]).filter(l=>l.status==='active').forEach(l=>{const d=daysUntil(l.returnDate);if(d!==null&&d<=30)c++;});
+    return c;
+  })();
 
   const assetSubTabs=[{id:'realEstate',label:t.realEstate},{id:'companies',label:t.companies},{id:'vehicles',label:t.vehicles},{id:'investments',label:t.investments}];
   const opsSubTabs=[{id:'operations',label:t.operations},{id:'loansGiven',label:t.loansGiven}];
