@@ -320,10 +320,18 @@ function SubTabs({tabs,active,onChange,T}){
 function Dashboard({data,lang,t,T}){
   const re=data.realEstate||[],co=data.companies||[],ve=data.vehicles||[],iv=data.investments||[],tr=data.transactions||[];
   const totalAssets=re.reduce((s,p)=>s+p.value,0)+co.reduce((s,c)=>s+c.capital,0)+ve.reduce((s,v)=>s+v.value,0)+iv.reduce((s,i)=>s+i.currentValue,0);
-  const now=new Date();
-  const thisMonth=tx=>{const d=new Date(tx.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();};
-  const mInc=tr.filter(tx=>tx.type==='income'&&thisMonth(tx)).reduce((s,tx)=>s+tx.amount,0);
-  const mExp=tr.filter(tx=>tx.type==='expense'&&thisMonth(tx)).reduce((s,tx)=>s+tx.amount,0);
+
+  // Monthly income: sum from active companies + normalized rent from properties
+  const rentNormalize=(amt,freq)=>{if(!amt)return 0;if(freq==='monthly')return amt;if(freq==='quarterly')return amt/3;if(freq==='yearly')return amt/12;return amt/12;};
+  const rentIncome=re.reduce((s,p)=>{if(p.hasUnits)return s+p.units.filter(u=>u.status==='occupied').reduce((su,u)=>su+rentNormalize(u.rent?.amount,u.rent?.frequency),0);if(p.status==='occupied')return s+rentNormalize(p.rent?.amount,p.rent?.frequency);return s;},0);
+  const companyIncome=co.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+c.monthlyRevenue,0);
+  const mInc=rentIncome+companyIncome;
+
+  // Monthly expenses: company costs + vehicle installments + recurring operations
+  const companyExp=co.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+c.monthlyExpense,0);
+  const loanExp=ve.reduce((s,v)=>s+(v.loan?.monthlyInstallment||0),0);
+  const recurringOps=(data.operations||[]).filter(o=>o.frequency==='monthly'&&o.status!=='paid').reduce((s,o)=>s+o.amount,0);
+  const mExp=companyExp+loanExp+recurringOps;
   const alerts=[];
   re.forEach(p=>{
     const units=p.hasUnits?p.units:(p.status==='occupied'?[p]:[]);
@@ -355,26 +363,27 @@ function Dashboard({data,lang,t,T}){
       </div>
       {/* KPIs */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-        <StatCard label={t.monthlyIncome} value={fmtC(mInc,lang)} icon={ArrowUpCircle} color={T.success} T={T}/>
-        <StatCard label={t.monthlyExpenses} value={fmtC(mExp,lang)} icon={ArrowDownCircle} color={T.danger} T={T}/>
-        <StatCard label={t.balance} value={fmtC(mInc-mExp,lang)} icon={TrendingUp} color={mInc>=mExp?T.success:T.danger} T={T}/>
+        <StatCard label={lang==='ar'?'الدخل الشهري المتوقع':'Est. Monthly Income'} value={fmtC(mInc,lang)} icon={ArrowUpCircle} color={T.success} T={T}/>
+        <StatCard label={lang==='ar'?'المصاريف الشهرية':'Monthly Expenses'} value={fmtC(mExp,lang)} icon={ArrowDownCircle} color={T.danger} T={T}/>
+        <StatCard label={lang==='ar'?'صافي شهري':'Net Monthly'} value={fmtC(mInc-mExp,lang)} icon={TrendingUp} color={mInc>=mExp?T.success:T.danger} T={T}/>
         <StatCard label={t.totalAssets} value={fmtC(totalAssets,lang)} icon={Wallet} color={T.gold} T={T}/>
       </div>
       {/* Alerts */}
       {alerts.length>0&&(
-        <div style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
-          <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px'}}>
-            <Bell size={14} color={T.gold}/><span style={{color:T.text,fontWeight:'700',fontSize:'0.85rem'}}>{t.alerts}</span>
-            <span style={{background:T.danger,color:'#fff',borderRadius:'50%',width:'18px',height:'18px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.65rem',fontWeight:'700'}}>{alerts.length}</span>
+        <div style={{background:T.surface,borderRadius:'20px',padding:'16px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
+          <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px'}}>
+            <div style={{width:'28px',height:'28px',borderRadius:'8px',background:T.danger+'18',display:'flex',alignItems:'center',justifyContent:'center'}}><Bell size={13} color={T.danger}/></div>
+            <span style={{color:T.text,fontWeight:'700',fontSize:'0.88rem',flex:1}}>{t.alerts}</span>
+            <span style={{background:T.danger,color:'#fff',borderRadius:'10px',padding:'2px 8px',fontSize:'0.65rem',fontWeight:'800'}}>{alerts.length}</span>
           </div>
-          {alerts.slice(0,4).map((a,i)=>(
-            <div key={i} style={{display:'flex',alignItems:'center',gap:'10px',padding:'10px',borderRadius:'12px',background:a.color+'11',border:`1px solid ${a.color}33`,marginBottom:'6px'}}>
-              <AlertTriangle size={13} color={a.color} style={{flexShrink:0}}/>
+          {alerts.map((a,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:'10px',padding:'11px 12px',borderRadius:'14px',background:a.color+'0e',border:`1px solid ${a.color}28`,marginBottom:'6px'}}>
+              <div style={{width:'32px',height:'32px',borderRadius:'10px',background:a.color+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><AlertTriangle size={14} color={a.color}/></div>
               <div style={{flex:1,minWidth:0}}>
-                <p style={{margin:0,fontSize:'0.8rem',fontWeight:'600',color:T.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.name}</p>
-                <p style={{margin:0,fontSize:'0.7rem',color:T.textMuted}}>{a.label}</p>
+                <p style={{margin:0,fontSize:'0.82rem',fontWeight:'600',color:T.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.name}</p>
+                <p style={{margin:0,fontSize:'0.7rem',color:T.textMuted,marginTop:'1px'}}>{a.label}</p>
               </div>
-              <span style={{fontSize:'0.72rem',fontWeight:'700',color:a.color,whiteSpace:'nowrap'}}>{a.days<=0?'اليوم!':a.days===1?'غداً':`${a.days} ${t.days}`}</span>
+              <span style={{fontSize:'0.73rem',fontWeight:'800',color:a.color,whiteSpace:'nowrap',background:a.color+'15',padding:'3px 8px',borderRadius:'8px'}}>{a.days<=0?'اليوم!':a.days===1?'غداً':`${a.days} ${t.days}`}</span>
             </div>
           ))}
         </div>
@@ -455,7 +464,7 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete}){
       </div>
       {filtered.length===0&&<p style={{color:T.textMuted,textAlign:'center',padding:'2rem',fontSize:'0.85rem'}}>{t.noData}</p>}
       {filtered.map(item=>{const isEx=expandedId===item.id;const du=!item.hasUnits&&daysUntil(item.rent?.nextDue);const ce=!item.hasUnits&&daysUntil(item.contract?.endDate);const statColor=item.status==='occupied'?T.success:item.status==='personal'?T.info:T.warning;const statLabel=item.status==='occupied'?t.occupied:item.status==='personal'?t.personal:t.vacant;return(
-        <div key={item.id} style={{background:T.surface,borderRadius:'16px',boxShadow:T.cardShadow,overflow:'hidden'}}>
+        <div key={item.id} style={{background:T.surface,borderRadius:'20px',boxShadow:T.cardShadow,overflow:'hidden',border:`1px solid ${T.border}`}}>
           <div style={{padding:'14px',cursor:'pointer'}} onClick={()=>setExpandedId(isEx?null:item.id)}>
             <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'8px'}}>
               <div style={{flex:1,minWidth:0}}>
@@ -1187,22 +1196,27 @@ export default function App(){
       `}</style>
 
       {/* HEADER */}
-      <header style={{background:isDark?`${T.surface}ee`:`${T.tabBar}`,borderBottom:`1px solid ${T.border}`,padding:'12px 16px',display:'flex',alignItems:'center',gap:'8px',position:'sticky',top:0,zIndex:30,backdropFilter:'blur(20px)'}}>
-        <h2 style={{margin:0,color:T.text,fontWeight:'700',fontSize:'1rem',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{pageTitle()}</h2>
+      <header style={{
+        background:isDark?'rgba(5,12,26,0.85)':'rgba(249,249,249,0.92)',
+        borderBottom:`1px solid ${T.border}`,
+        padding:'14px 16px 12px',
+        display:'flex',alignItems:'center',gap:'8px',
+        position:'sticky',top:0,zIndex:30,
+        backdropFilter:'blur(28px)',WebkitBackdropFilter:'blur(28px)',
+      }}>
+        <h2 style={{margin:0,color:T.text,fontWeight:'700',fontSize:'1.05rem',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.3px'}}>{pageTitle()}</h2>
         <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
           {alertCount>0&&(
-            <div style={{position:'relative',cursor:'pointer'}} onClick={()=>{setActiveTab('dashboard');setActivePage('dashboard');}}>
-              <Bell size={18} color={T.textMuted}/>
-              <span style={{position:'absolute',top:'-4px',[lang==='ar'?'left':'right']:'-4px',width:'16px',height:'16px',background:T.danger,color:'#fff',borderRadius:'50%',fontSize:'0.6rem',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:'700'}}>{alertCount}</span>
-            </div>
+            <button onClick={()=>{setActiveTab('dashboard');setActivePage('dashboard');}} style={{position:'relative',background:T.danger+'18',border:`1px solid ${T.danger}33`,borderRadius:'10px',padding:'6px 10px',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px',color:T.danger}}>
+              <Bell size={13}/>
+              <span style={{fontSize:'0.7rem',fontWeight:'800'}}>{alertCount}</span>
+            </button>
           )}
-          {/* Dark/Light toggle */}
-          <button onClick={()=>setIsDark(d=>!d)} style={{display:'flex',alignItems:'center',justifyContent:'center',width:'36px',height:'36px',borderRadius:'50%',border:`1px solid ${T.border}`,background:T.surface2,cursor:'pointer',color:T.textMuted,transition:'all 0.2s'}}>
-            {isDark?<Sun size={16}/>:<Moon size={16}/>}
+          <button onClick={()=>setIsDark(d=>!d)} style={{display:'flex',alignItems:'center',justifyContent:'center',width:'34px',height:'34px',borderRadius:'10px',border:`1px solid ${T.border}`,background:T.surface2,cursor:'pointer',color:T.textMuted}}>
+            {isDark?<Sun size={15}/>:<Moon size={15}/>}
           </button>
-          {/* Lang toggle */}
-          <button onClick={()=>setLang(l=>l==='ar'?'en':'ar')} style={{display:'flex',alignItems:'center',gap:'3px',padding:'6px 10px',background:T.surface2,border:`1px solid ${T.border}`,borderRadius:'20px',color:T.textMuted,cursor:'pointer',fontFamily:'inherit',fontSize:'0.76rem',fontWeight:'600'}}>
-            <Globe size={12}/>{lang==='ar'?'EN':'ع'}
+          <button onClick={()=>setLang(l=>l==='ar'?'en':'ar')} style={{display:'flex',alignItems:'center',gap:'3px',padding:'6px 10px',background:T.surface2,border:`1px solid ${T.border}`,borderRadius:'10px',color:T.textMuted,cursor:'pointer',fontFamily:'inherit',fontSize:'0.75rem',fontWeight:'700'}}>
+            {lang==='ar'?'EN':'ع'}
           </button>
         </div>
       </header>
