@@ -389,6 +389,17 @@ function SmBtn({onClick,label,icon:Icon,color,T}){
   );
 }
 
+// Empty state
+function EmptyState({icon,title,subtitle,T}){
+  return(
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'3rem 1rem',textAlign:'center'}}>
+      <div style={{fontSize:'3rem',marginBottom:'12px',opacity:0.5}}>{icon}</div>
+      <p style={{margin:0,fontSize:'0.95rem',fontWeight:'700',color:T.textMuted}}>{title}</p>
+      {subtitle&&<p style={{margin:'6px 0 0',fontSize:'0.8rem',color:T.textDim}}>{subtitle}</p>}
+    </div>
+  );
+}
+
 // validate helper
 function validate(fields,t){
   const errors={};
@@ -475,18 +486,40 @@ function Dashboard({data,lang,t,T}){
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
       {/* Hero */}
-      <div style={{
-        background:`linear-gradient(145deg,${T.goldDark} 0%,${T.gold} 55%,#e8c96a 100%)`,
-        borderRadius:'24px',padding:'28px 24px',textAlign:'center',
-        position:'relative',overflow:'hidden',
-        boxShadow:`0 8px 32px ${T.gold}40`,
-      }}>
-        <div style={{position:'absolute',top:'-30%',right:'-10%',width:'180px',height:'180px',borderRadius:'50%',background:'rgba(255,255,255,0.08)',pointerEvents:'none'}}/>
-        <div style={{position:'absolute',bottom:'-20%',left:'-5%',width:'120px',height:'120px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',pointerEvents:'none'}}/>
-        <p style={{color:'rgba(255,255,255,0.75)',fontSize:'0.78rem',margin:'0 0 6px',fontWeight:'600',letterSpacing:'0.5px',textTransform:'uppercase'}}>{t.netWorth}</p>
-        <p style={{color:'#fff',fontSize:'2.6rem',fontWeight:'900',margin:'0 0 4px',letterSpacing:'-1.5px',textShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>{fmt(totalAssets)}</p>
-        <p style={{color:'rgba(255,255,255,0.65)',fontSize:'0.75rem',margin:0,fontWeight:'500'}}>{lang==='ar'?'ريال سعودي':'Saudi Riyal'}</p>
-      </div>
+      {(()=>{
+        const savingRate=mInc>0?Math.round(((mInc-mExp)/mInc)*100):0;
+        const rateColor=savingRate>=30?'#4ade80':savingRate>=15?'#fde68a':'#fca5a5';
+        const rateLabel=savingRate>=30?(lang==='ar'?'ممتاز':'Excellent'):savingRate>=15?(lang==='ar'?'جيد':'Good'):(lang==='ar'?'تحت المستوى':'Below avg');
+        return(
+          <div style={{
+            background:`linear-gradient(145deg,${T.goldDark} 0%,${T.gold} 55%,#e8c96a 100%)`,
+            borderRadius:'24px',padding:'24px',textAlign:'center',
+            position:'relative',overflow:'hidden',
+            boxShadow:`0 8px 32px ${T.gold}40`,
+          }}>
+            <div style={{position:'absolute',top:'-30%',right:'-10%',width:'180px',height:'180px',borderRadius:'50%',background:'rgba(255,255,255,0.08)',pointerEvents:'none'}}/>
+            <div style={{position:'absolute',bottom:'-20%',left:'-5%',width:'120px',height:'120px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',pointerEvents:'none'}}/>
+            <p style={{color:'rgba(255,255,255,0.75)',fontSize:'0.72rem',margin:'0 0 6px',fontWeight:'700',letterSpacing:'0.8px',textTransform:'uppercase'}}>{t.netWorth}</p>
+            <p style={{color:'#fff',fontSize:'2.5rem',fontWeight:'900',margin:'0 0 2px',letterSpacing:'-1.5px',textShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>{fmt(totalAssets)}</p>
+            <p style={{color:'rgba(255,255,255,0.6)',fontSize:'0.72rem',margin:'0 0 16px',fontWeight:'500'}}>{lang==='ar'?'ريال سعودي':'Saudi Riyal'}</p>
+            {/* Savings Rate Bar */}
+            {mInc>0&&(
+              <div style={{background:'rgba(0,0,0,0.15)',borderRadius:'12px',padding:'10px 14px'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
+                  <span style={{color:'rgba(255,255,255,0.75)',fontSize:'0.7rem',fontWeight:'600'}}>{lang==='ar'?'معدل التوفير الشهري':'Monthly Savings Rate'}</span>
+                  <div style={{display:'flex',alignItems:'center',gap:'5px'}}>
+                    <span style={{color:rateColor,fontSize:'0.85rem',fontWeight:'900'}}>{savingRate}%</span>
+                    <span style={{background:'rgba(255,255,255,0.15)',color:rateColor,fontSize:'0.62rem',fontWeight:'700',padding:'1px 6px',borderRadius:'6px'}}>{rateLabel}</span>
+                  </div>
+                </div>
+                <div style={{height:'5px',background:'rgba(255,255,255,0.15)',borderRadius:'3px',overflow:'hidden'}}>
+                  <div style={{height:'100%',width:`${Math.min(Math.max(savingRate,0),100)}%`,background:rateColor,borderRadius:'3px',transition:'width 0.6s ease'}}/>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
       {/* KPIs */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
         <StatCard label={lang==='ar'?'الدخل الشهري':'Monthly Income'} value={fmtC(mInc,lang)} icon={TrendingUp} color={T.success} T={T}/>
@@ -559,6 +592,7 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete}){
   const [modal,setModal]=useState(null),[confirm,setConfirm]=useState(null),[unitModal,setUnitModal]=useState(null);
   const [expandedId,setExpandedId]=useState(null),[search,setSearch]=useState('');
   const [form,setForm]=useState({}),[unitForm,setUnitForm]=useState({}),[errors,setErrors]=useState({});
+  const [paidFlash,setPaidFlash]=useState(null);
   const items=data.realEstate||[];const pt=lang==='ar'?PROP_T.ar:PROP_T.en;const ft=lang==='ar'?FREQ_T.ar:FREQ_T.en;
   const openAdd=()=>{setForm({name:'',type:'',location:'',value:'',status:'',hasUnits:false,units:[],tenant:{name:'',phone:''},rent:{amount:'',frequency:'yearly',nextDue:'',lastPaid:''},contract:{startDate:'',endDate:''},notes:''});setErrors({});setModal('add');};
   const openEdit=item=>{setForm({...item,value:String(item.value),rent:{...item.rent,amount:String(item.rent?.amount||'')}});setErrors({});setModal({edit:item});};
@@ -570,7 +604,11 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete}){
     logActivity(modal==='add'?t.addedAction:t.editedAction,t.realEstate,`"${entry.name}"`);setModal(null);
   };
   const del=id=>{const item=items.find(x=>x.id===id);setData(d=>({...d,realEstate:d.realEstate.filter(x=>x.id!==id)}));logActivity(t.deletedAction,t.realEstate,`"${item?.name}"`);setConfirm(null);};
-  const markPaid=(pid,uid)=>{setData(d=>({...d,realEstate:d.realEstate.map(p=>{if(p.id!==pid)return p;if(uid&&p.hasUnits)return{...p,units:p.units.map(u=>u.id===uid?{...u,rent:{...u.rent,lastPaid:todayStr()}}:u)};return{...p,rent:{...p.rent,lastPaid:todayStr()}};})}));logActivity(t.paidAction,t.realEstate,`إيجار "${items.find(p=>p.id===pid)?.name}"`);};
+  const markPaid=(pid,uid)=>{
+    setData(d=>({...d,realEstate:d.realEstate.map(p=>{if(p.id!==pid)return p;if(uid&&p.hasUnits)return{...p,units:p.units.map(u=>u.id===uid?{...u,rent:{...u.rent,lastPaid:todayStr()}}:u)};return{...p,rent:{...p.rent,lastPaid:todayStr()}};})}));
+    logActivity(t.paidAction,t.realEstate,`إيجار "${items.find(p=>p.id===pid)?.name}"`);
+    setPaidFlash(uid||pid);setTimeout(()=>setPaidFlash(null),1800);
+  };;
   const openAddUnit=pid=>{setUnitForm({id:'',number:'',floor:'',type:'',status:'',tenant:{name:'',phone:''},rent:{amount:'',frequency:'yearly',nextDue:'',lastPaid:''},contract:{startDate:'',endDate:''}});setErrors({});setUnitModal({pid,isNew:true});};
   const openEditUnit=(pid,u)=>{setUnitForm({...u,rent:{...u.rent,amount:String(u.rent?.amount||'')}});setErrors({});setUnitModal({pid,isNew:false});};
   const saveUnit=()=>{
@@ -588,9 +626,9 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete}){
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={t.search} style={{flex:1,background:T.inputBg,border:`1px solid ${T.border}`,borderRadius:'12px',padding:'10px 14px',color:T.text,fontSize:'0.85rem',fontFamily:'inherit',outline:'none'}}/>
         <AddBtn onClick={openAdd} label={t.add} T={T}/>
       </div>
-      {filtered.length===0&&<p style={{color:T.textMuted,textAlign:'center',padding:'2rem',fontSize:'0.85rem'}}>{t.noData}</p>}
-      {filtered.map(item=>{const isEx=expandedId===item.id;const du=!item.hasUnits&&daysUntil(item.rent?.nextDue);const ce=!item.hasUnits&&daysUntil(item.contract?.endDate);const statColor=item.status==='occupied'?T.success:item.status==='personal'?T.info:T.warning;const statLabel=item.status==='occupied'?t.occupied:item.status==='personal'?t.personal:t.vacant;return(
-        <div key={item.id} style={{background:T.surface,borderRadius:'20px',boxShadow:T.cardShadow,overflow:'hidden',border:`1px solid ${T.border}`}}>
+      {filtered.length===0&&<EmptyState icon="🏠" title={lang==='ar'?'لا توجد عقارات':'No properties yet'} subtitle={lang==='ar'?'اضغط إضافة لتسجيل أول عقار':'Tap Add to register your first property'} T={T}/>}
+      {filtered.map(item=>{const isEx=expandedId===item.id;const du=!item.hasUnits&&daysUntil(item.rent?.nextDue);const ce=!item.hasUnits&&daysUntil(item.contract?.endDate);const statColor=item.status==='occupied'?T.success:item.status==='personal'?T.info:T.warning;const statLabel=item.status==='occupied'?t.occupied:item.status==='personal'?t.personal:t.vacant;const isFlashing=paidFlash===item.id||(item.units||[]).some(u=>paidFlash===u.id);return(
+        <div key={item.id} style={{background:isFlashing?T.success+'18':T.surface,borderRadius:'20px',boxShadow:T.cardShadow,overflow:'hidden',border:`1.5px solid ${isFlashing?T.success:T.border}`,transition:'all 0.4s ease'}}>
           <div style={{padding:'14px',cursor:'pointer'}} onClick={()=>setExpandedId(isEx?null:item.id)}>
             <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'8px'}}>
               <div style={{flex:1,minWidth:0}}>
@@ -736,7 +774,7 @@ function CompaniesPage({data,setData,lang,t,T,logActivity,canDelete}){
         <p style={{margin:0,fontSize:'0.78rem',color:T.textMuted}}>{lang==='ar'?'صافي شهري:':'Net/mo:'} <strong style={{color:T.success}}>{fmtC(items.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+c.monthlyRevenue-c.monthlyExpense,0),lang)}</strong></p>
         <AddBtn onClick={openAdd} label={t.add} T={T}/>
       </div>
-      {items.length===0&&<p style={{color:T.textMuted,textAlign:'center',padding:'2rem',fontSize:'0.85rem'}}>{t.noData}</p>}
+      {items.length===0&&<EmptyState icon="🏢" title={lang==='ar'?'لا توجد شركات':'No companies yet'} subtitle={lang==='ar'?'أضف شركاتك ومشاريعك هنا':'Add your companies and projects here'} T={T}/>}
       {items.map(item=>{const profit=item.monthlyRevenue-item.monthlyExpense;const isActive=item.companyStatus==='active';return(
         <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:'10px',flexWrap:'wrap',gap:'4px'}}>
@@ -784,7 +822,7 @@ function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete}){
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><p style={{margin:0,fontSize:'0.78rem',color:T.textMuted}}>{fmtC(items.reduce((s,v)=>s+v.value,0),lang)}</p><AddBtn onClick={openAdd} label={t.add} T={T}/></div>
-      {items.length===0&&<p style={{color:T.textMuted,textAlign:'center',padding:'2rem',fontSize:'0.85rem'}}>{t.noData}</p>}
+      {items.length===0&&<EmptyState icon="🚗" title={lang==='ar'?'لا توجد مركبات':'No vehicles yet'} subtitle={lang==='ar'?'سجّل سياراتك لمتابعة التأمين والأقساط':'Register vehicles to track insurance and installments'} T={T}/>}
       {items.map(item=>{const di=daysUntil(item.insurance?.expiryDate);const dl=item.loan?.amount>0?daysUntil(item.loan?.nextDue):null;return(
         <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:'10px'}}><div><h4 style={{margin:0,color:T.text,fontWeight:'700'}}>{item.name}</h4><p style={{margin:'2px 0 0',fontSize:'0.73rem',color:T.textMuted}}>{item.type} • {item.year} • {item.plateNumber}</p></div><Badge color={T.gold}>{fmtC(item.value,lang)}</Badge></div>
@@ -850,7 +888,7 @@ function InvestmentsPage({data,setData,lang,t,T,logActivity,canDelete}){
         <button onClick={openAdd} style={{marginRight:'auto',flexShrink:0,display:'flex',alignItems:'center',gap:'4px',padding:'6px 14px',borderRadius:'20px',border:'none',background:`linear-gradient(135deg,${T.goldDark},${T.gold})`,color:'#fff',fontSize:'0.78rem',fontWeight:'700',cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap'}}><Plus size={13}/>{t.add}</button>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-        {filtered.length===0&&<p style={{color:T.textMuted,textAlign:'center',padding:'2rem',fontSize:'0.85rem',gridColumn:'1/-1'}}>{t.noData}</p>}
+        {filtered.length===0&&<div style={{gridColumn:'1/-1'}}><EmptyState icon="📈" title={lang==='ar'?'لا توجد استثمارات':'No investments yet'} subtitle={lang==='ar'?'أضف محافظك وأصولك الاستثمارية':'Add your portfolios and investment assets'} T={T}/></div>}
         {filtered.map(item=>{const pl=item.currentValue-item.purchasePrice;const p=pct(pl,item.purchasePrice);return(
           <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'12px',boxShadow:T.cardShadow}}>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:'6px'}}><span style={{fontSize:'1.2rem'}}>{icons[item.type]||'💡'}</span><Badge color={pl>=0?T.success:T.danger}>{pl>=0?'+':''}{p}%</Badge></div>
@@ -888,7 +926,8 @@ function OperationsPage({data,setData,lang,t,T,logActivity,currentUser,canDelete
   const icons={maintenance:'🔧',invoice:'📄',subscription:'🔄',installment:'💳',other:'📌'};
   const openAdd=()=>{setForm({date:todayStr(),type:'',description:'',amount:'',frequency:'once',nextDue:'',linkedName:'',status:'pending'});setErrors({});setModal(true);};
   const save=()=>{const errs=validate([['type',form.type],['description',form.description],['amount',form.amount]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:genId(),amount:Number(form.amount)||0,addedBy:currentUser?.name||'?'};setData(d=>({...d,operations:[entry,...(d.operations||[])]}));logActivity(t.addedAction,t.operations,`${ot[form.type]}: ${form.description}`);setModal(false);};
-  const markPaid=id=>setData(d=>({...d,operations:d.operations.map(o=>o.id===id?{...o,status:'paid'}:o)}));
+  const [paidFlash,setPaidFlash]=useState(null);
+  const markPaid=id=>{setData(d=>({...d,operations:d.operations.map(o=>o.id===id?{...o,status:'paid'}:o)}));setPaidFlash(id);setTimeout(()=>setPaidFlash(null),1800);};
   const del=id=>{setData(d=>({...d,operations:d.operations.filter(o=>o.id!==id)}));setConfirm(null);};
   const filtered=items.filter(o=>(typeF==='all'||o.type===typeF)&&(statusF==='all'||o.status===statusF));
   const pending=items.filter(o=>o.status==='pending').reduce((s,o)=>s+o.amount,0);
@@ -908,9 +947,9 @@ function OperationsPage({data,setData,lang,t,T,logActivity,currentUser,canDelete
         </div>
         <div style={{marginRight:'auto'}}><AddBtn onClick={openAdd} label={lang==='ar'?'عملية جديدة':'New'} T={T}/></div>
       </div>
-      {filtered.length===0&&<p style={{color:T.textMuted,textAlign:'center',padding:'2rem',fontSize:'0.85rem'}}>{t.noData}</p>}
+      {filtered.length===0&&<EmptyState icon="⚙️" title={lang==='ar'?'لا توجد عمليات':'No operations yet'} subtitle={lang==='ar'?'سجّل الصيانة والفواتير والاشتراكات':'Log maintenance, invoices and subscriptions'} T={T}/>}
       {filtered.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(item=>(
-        <div key={item.id} style={{background:T.surface,borderRadius:'14px',padding:'12px',boxShadow:T.cardShadow,display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}>
+        <div key={item.id} style={{background:paidFlash===item.id?T.success+'18':T.surface,borderRadius:'14px',padding:'12px',boxShadow:T.cardShadow,display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap',border:`1.5px solid ${paidFlash===item.id?T.success:T.border}`,transition:'all 0.4s ease'}}>
           <div style={{width:'36px',height:'36px',borderRadius:'10px',background:T.surface2,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',flexShrink:0}}>{icons[item.type]||'📌'}</div>
           <div style={{flex:1,minWidth:'120px'}}>
             <div style={{display:'flex',alignItems:'center',gap:'5px',flexWrap:'wrap'}}><p style={{margin:0,fontSize:'0.82rem',fontWeight:'600',color:T.text}}>{item.description}</p><Badge color={sColor[item.status]||T.textMuted}>{item.status==='paid'?(lang==='ar'?'مدفوع':'Paid'):item.status==='pending'?(lang==='ar'?'معلق':'Pending'):(lang==='ar'?'متأخر':'Late')}</Badge></div>
@@ -961,7 +1000,7 @@ function LoansGivenPage({data,setData,lang,t,T,logActivity,canDelete}){
         <div style={{fontSize:'0.78rem',color:T.textMuted}}>{lang==='ar'?'متبقي:':'Remaining:'} <strong style={{color:T.warning}}>{fmtC(items.reduce((s,l)=>s+l.amount-(l.payments||[]).reduce((sp,p)=>sp+p.amount,0),0),lang)}</strong></div>
         <AddBtn onClick={openAdd} label={t.add} T={T}/>
       </div>
-      {items.length===0&&<p style={{color:T.textMuted,textAlign:'center',padding:'2rem',fontSize:'0.85rem'}}>{t.noData}</p>}
+      {items.length===0&&<EmptyState icon="🤝" title={lang==='ar'?'لا توجد قروض':'No loans given'} subtitle={lang==='ar'?'سجّل القروض التي أعطيتها لمتابعة السداد':'Track loans you gave to others'} T={T}/>}
       {items.map(item=>{const totalPaid=(item.payments||[]).reduce((s,p)=>s+p.amount,0);const remaining=item.amount-totalPaid;const p=pct(totalPaid,item.amount);const dr=daysUntil(item.returnDate);const status=item.status==='completed'?'completed':dr!==null&&dr<0?'late':'active';return(
         <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:'8px',flexWrap:'wrap',gap:'4px'}}>
