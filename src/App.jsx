@@ -28,13 +28,13 @@ const DARK = {
   glassCard:'rgba(255,255,255,0.04)', glassBorder:'rgba(255,255,255,0.07)',
 };
 const LIGHT = {
-  bg:'#F2F2F7', surface:'#FFFFFF', surface2:'#F2F2F7',
-  border:'#E5E5EA', borderGold:'#c9a84c44',
-  gold:'#B07D1A', goldLight:'#D4A017', goldDark:'#7a5510',
-  text:'#1C1C1E', textMuted:'#6C6C70', textDim:'#AEAEB2',
-  success:'#34C759', danger:'#FF3B30', warning:'#FF9500', info:'#007AFF',
-  tabBar:'rgba(249,249,249,0.95)', cardShadow:'0 1px 3px rgba(0,0,0,0.07)', inputBg:'#F2F2F7',
-  glassCard:'rgba(255,255,255,0.9)', glassBorder:'rgba(0,0,0,0.06)',
+  bg:'#ECEEF2', surface:'#FFFFFF', surface2:'#F5F5F7',
+  border:'#D8D8DC', borderGold:'#c9a84c55',
+  gold:'#9A6E0D', goldLight:'#C4860E', goldDark:'#6b4a08',
+  text:'#1C1C1E', textMuted:'#636366', textDim:'#AEAEB2',
+  success:'#248A3D', danger:'#D70015', warning:'#C45000', info:'#0060CE',
+  tabBar:'rgba(248,248,252,0.97)', cardShadow:'0 2px 10px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)', inputBg:'#F0F0F5',
+  glassCard:'rgba(255,255,255,0.95)', glassBorder:'rgba(0,0,0,0.08)',
 };
 
 const TR = {
@@ -501,7 +501,16 @@ function Dashboard({data,lang,t,T}){
             <div style={{position:'absolute',bottom:'-20%',left:'-5%',width:'120px',height:'120px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',pointerEvents:'none'}}/>
             <p style={{color:'rgba(255,255,255,0.75)',fontSize:'0.72rem',margin:'0 0 6px',fontWeight:'700',letterSpacing:'0.8px',textTransform:'uppercase'}}>{t.netWorth}</p>
             <p style={{color:'#fff',fontSize:'2.5rem',fontWeight:'900',margin:'0 0 2px',letterSpacing:'-1.5px',textShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>{fmt(totalAssets)}</p>
-            <p style={{color:'rgba(255,255,255,0.6)',fontSize:'0.72rem',margin:'0 0 16px',fontWeight:'500'}}>{lang==='ar'?'ريال سعودي':'Saudi Riyal'}</p>
+            <p style={{color:'rgba(255,255,255,0.6)',fontSize:'0.72rem',margin:'0 0 10px',fontWeight:'500'}}>{lang==='ar'?'ريال سعودي':'Saudi Riyal'}</p>
+            {/* Asset Summary Pills */}
+            {(re.length+co.length+ve.length+iv.length)>0&&(
+              <div style={{display:'flex',flexWrap:'wrap',justifyContent:'center',gap:'6px',marginBottom:'14px'}}>
+                {re.length>0&&<span style={{background:'rgba(255,255,255,0.18)',color:'rgba(255,255,255,0.92)',fontSize:'0.68rem',fontWeight:'700',padding:'3px 10px',borderRadius:'20px',backdropFilter:'blur(4px)'}}>{re.length} {lang==='ar'?'عقار':'Properties'}</span>}
+                {co.length>0&&<span style={{background:'rgba(255,255,255,0.18)',color:'rgba(255,255,255,0.92)',fontSize:'0.68rem',fontWeight:'700',padding:'3px 10px',borderRadius:'20px',backdropFilter:'blur(4px)'}}>{co.length} {lang==='ar'?'شركة':'Companies'}</span>}
+                {ve.length>0&&<span style={{background:'rgba(255,255,255,0.18)',color:'rgba(255,255,255,0.92)',fontSize:'0.68rem',fontWeight:'700',padding:'3px 10px',borderRadius:'20px',backdropFilter:'blur(4px)'}}>{ve.length} {lang==='ar'?'مركبة':'Vehicles'}</span>}
+                {iv.length>0&&<span style={{background:'rgba(255,255,255,0.18)',color:'rgba(255,255,255,0.92)',fontSize:'0.68rem',fontWeight:'700',padding:'3px 10px',borderRadius:'20px',backdropFilter:'blur(4px)'}}>{iv.length} {lang==='ar'?'استثمار':'Investments'}</span>}
+              </div>
+            )}
             {/* Savings Rate Bar */}
             {mInc>0&&(
               <div style={{background:'rgba(0,0,0,0.15)',borderRadius:'12px',padding:'10px 14px'}}>
