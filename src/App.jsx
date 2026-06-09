@@ -204,38 +204,82 @@ function buildSampleData(){
 // ═══ UI COMPONENTS (iOS style, theme-aware) ═══
 function useTheme(isDark){ return isDark?DARK:LIGHT; }
 
-function Field({label,children,error}){
+function Field({label,children,error,T}){
   return(
     <div style={{marginBottom:'14px'}}>
-      <label style={{display:'block',fontSize:'0.72rem',fontWeight:'600',color:'#888',marginBottom:'5px',textTransform:'uppercase',letterSpacing:'0.5px'}}>{label}</label>
+      <label style={{display:'block',fontSize:'0.68rem',fontWeight:'700',color: T ? T.textMuted : '#888',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.6px'}}>{label}</label>
       {children}
-      {error&&<p style={{margin:'4px 0 0',fontSize:'0.7rem',color:'#FF3B30'}}>{error}</p>}
+      {error&&(
+        <div style={{display:'flex',alignItems:'center',gap:'4px',marginTop:'5px'}}>
+          <span style={{width:'4px',height:'4px',borderRadius:'50%',background:'#FF3B30',flexShrink:0,display:'inline-block'}}/>
+          <p style={{margin:0,fontSize:'0.7rem',color:'#FF3B30'}}>{error}</p>
+        </div>
+      )}
     </div>
   );
 }
 function Inp({value,onChange,type='text',placeholder='',T,error}){
   const [focused,setFocused]=useState(false);
-  return<input type={type} value={value||''} onChange={onChange} placeholder={placeholder}
-    style={{background:T.inputBg,border:`1.5px solid ${focused?T.gold:(error?'#FF3B30':T.border)}`,borderRadius:'12px',color:T.text,padding:'12px 14px',fontSize:'0.9rem',width:'100%',boxSizing:'border-box',fontFamily:'inherit',outline:'none',transition:'border 0.15s'}}
-    onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}/>;
+  return(
+    <>
+      <input type={type} value={value||''} onChange={onChange} placeholder={placeholder}
+        style={{
+          background: focused ? T.surface : T.inputBg,
+          border:`1.5px solid ${focused ? T.gold : (error ? '#FF3B30' : T.border)}`,
+          borderRadius:'12px', color:T.text, padding:'12px 14px',
+          fontSize:'0.9rem', width:'100%', boxSizing:'border-box',
+          fontFamily:'inherit', outline:'none',
+          transition:'all 0.18s',
+          boxShadow: focused ? `0 0 0 3px ${T.gold}20` : 'none',
+        }}
+        onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}/>
+      <style>{`input::placeholder{color:${T.textDim || '#3a5478'}!important}`}</style>
+    </>
+  );
 }
 function Sel({value,onChange,children,T}){
-  return<select value={value||''} onChange={onChange} style={{background:T.inputBg,border:`1.5px solid ${T.border}`,borderRadius:'12px',color:T.text,padding:'12px 14px',fontSize:'0.9rem',width:'100%',boxSizing:'border-box',fontFamily:'inherit',outline:'none',cursor:'pointer'}}>{children}</select>;
+  const [focused,setFocused]=useState(false);
+  return(
+    <select value={value||''} onChange={onChange}
+      style={{
+        background:T.inputBg, border:`1.5px solid ${focused ? T.gold : T.border}`,
+        borderRadius:'12px', color:T.text, padding:'12px 14px',
+        fontSize:'0.9rem', width:'100%', boxSizing:'border-box',
+        fontFamily:'inherit', outline:'none', cursor:'pointer',
+        transition:'all 0.18s',
+        boxShadow: focused ? `0 0 0 3px ${T.gold}20` : 'none',
+      }}
+      onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}>
+      {children}
+    </select>
+  );
 }
 function Ta({value,onChange,rows=2,T}){
-  return<textarea value={value||''} onChange={onChange} rows={rows} style={{background:T.inputBg,border:`1.5px solid ${T.border}`,borderRadius:'12px',color:T.text,padding:'12px 14px',fontSize:'0.9rem',width:'100%',boxSizing:'border-box',fontFamily:'inherit',outline:'none',resize:'vertical'}}/>;
+  const [focused,setFocused]=useState(false);
+  return(
+    <textarea value={value||''} onChange={onChange} rows={rows}
+      style={{
+        background:T.inputBg, border:`1.5px solid ${focused ? T.gold : T.border}`,
+        borderRadius:'12px', color:T.text, padding:'12px 14px',
+        fontSize:'0.9rem', width:'100%', boxSizing:'border-box',
+        fontFamily:'inherit', outline:'none', resize:'vertical',
+        transition:'all 0.18s',
+        boxShadow: focused ? `0 0 0 3px ${T.gold}20` : 'none',
+      }}
+      onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}/>
+  );
 }
 
 function Modal({title,onClose,children,T}){
   return(
-    <div style={{position:'fixed',inset:0,zIndex:50,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,0.55)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)'}}>
-      <div style={{background:T.surface,borderRadius:'26px 26px 0 0',width:'100%',maxWidth:'600px',maxHeight:'93vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 -12px 50px rgba(0,0,0,0.3)',border:`1px solid ${T.border}`,animation:'slideUp 0.28s cubic-bezier(0.34,1.56,0.64,1)'}}>
-        <div style={{width:'36px',height:'4px',background:T.border,borderRadius:'2px',margin:'12px auto 0'}}/>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 20px 12px',borderBottom:`1px solid ${T.border}`}}>
+    <div style={{position:'fixed',inset:0,zIndex:50,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,0.6)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)'}}>
+      <div style={{background:T.surface,borderRadius:'28px 28px 0 0',width:'100%',maxWidth:'600px',maxHeight:'93vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 -16px 60px rgba(0,0,0,0.35)',border:`1px solid ${T.border}`,borderBottom:'none',animation:'slideUp 0.3s cubic-bezier(0.32,0.72,0,1)'}}>
+        <div style={{width:'40px',height:'5px',background:T.border,borderRadius:'3px',margin:'14px auto 0'}}/>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 20px 14px',borderBottom:`1px solid ${T.border}`}}>
           <h3 style={{color:T.text,margin:0,fontWeight:'700',fontSize:'1rem',letterSpacing:'-0.3px'}}>{title}</h3>
-          <button onClick={onClose} style={{background:T.surface2,border:`1px solid ${T.border}`,color:T.textMuted,cursor:'pointer',borderRadius:'50%',display:'flex',width:'30px',height:'30px',alignItems:'center',justifyContent:'center',transition:'all 0.15s'}}><X size={14}/></button>
+          <button onClick={onClose} style={{background:T.surface2,border:`1px solid ${T.border}`,color:T.textMuted,cursor:'pointer',borderRadius:'50%',display:'flex',width:'30px',height:'30px',alignItems:'center',justifyContent:'center'}}><X size={14}/></button>
         </div>
-        <div style={{overflowY:'auto',flex:1,padding:'20px'}}>{children}</div>
+        <div style={{overflowY:'auto',flex:1,padding:'20px 20px 32px'}}>{children}</div>
       </div>
     </div>
   );
@@ -243,14 +287,14 @@ function Modal({title,onClose,children,T}){
 
 function Confirm({t,onConfirm,onCancel,T}){
   return(
-    <div style={{position:'fixed',inset:0,zIndex:50,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem',background:'rgba(0,0,0,0.6)'}}>
-      <div style={{background:T.surface,borderRadius:'20px',padding:'2rem',maxWidth:'320px',width:'100%',textAlign:'center',boxShadow:'0 8px 40px rgba(0,0,0,0.3)'}}>
-        <div style={{width:'52px',height:'52px',background:`${T.danger}22`,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 1rem'}}><Trash2 size={22} color={T.danger}/></div>
-        <p style={{color:T.text,fontWeight:'700',marginBottom:'4px'}}>{t.confirmDelete}</p>
-        <p style={{color:T.textMuted,fontSize:'0.8rem',marginBottom:'1.5rem'}}>لا يمكن التراجع</p>
-        <div style={{display:'flex',gap:'8px'}}>
-          <button onClick={onConfirm} style={{flex:1,padding:'12px',borderRadius:'12px',border:'none',background:T.danger,color:'#fff',fontWeight:'700',cursor:'pointer',fontFamily:'inherit'}}>{t.yes}</button>
-          <button onClick={onCancel} style={{flex:1,padding:'12px',borderRadius:'12px',border:`1px solid ${T.border}`,background:'transparent',color:T.textMuted,cursor:'pointer',fontFamily:'inherit'}}>{t.no}</button>
+    <div style={{position:'fixed',inset:0,zIndex:60,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.5rem',background:'rgba(0,0,0,0.65)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)'}}>
+      <div style={{background:T.surface,borderRadius:'24px',padding:'2rem 1.75rem',maxWidth:'300px',width:'100%',textAlign:'center',boxShadow:'0 20px 60px rgba(0,0,0,0.4)',border:`1px solid ${T.border}`,animation:'fadeIn 0.2s ease'}}>
+        <div style={{width:'56px',height:'56px',background:`${T.danger}18`,borderRadius:'18px',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 1rem',border:`1px solid ${T.danger}30`}}><Trash2 size={24} color={T.danger}/></div>
+        <p style={{color:T.text,fontWeight:'700',fontSize:'1rem',marginBottom:'6px'}}>{t.confirmDelete}</p>
+        <p style={{color:T.textMuted,fontSize:'0.8rem',marginBottom:'1.5rem',lineHeight:'1.5'}}>لا يمكن التراجع عن هذا الإجراء</p>
+        <div style={{display:'flex',gap:'10px'}}>
+          <button onClick={onCancel} style={{flex:1,padding:'13px',borderRadius:'14px',border:`1.5px solid ${T.border}`,background:'transparent',color:T.textMuted,cursor:'pointer',fontFamily:'inherit',fontWeight:'600',fontSize:'0.9rem'}}>{t.no}</button>
+          <button onClick={onConfirm} style={{flex:1,padding:'13px',borderRadius:'14px',border:'none',background:T.danger,color:'#fff',fontWeight:'700',cursor:'pointer',fontFamily:'inherit',fontSize:'0.9rem',boxShadow:`0 4px 16px ${T.danger}44`}}>{t.yes}</button>
         </div>
       </div>
     </div>
@@ -258,38 +302,88 @@ function Confirm({t,onConfirm,onCancel,T}){
 }
 
 function Badge({color,children}){
-  return<span style={{fontSize:'0.7rem',padding:'3px 9px',borderRadius:'20px',fontWeight:'600',color,background:color+'22',whiteSpace:'nowrap'}}>{children}</span>;
+  return(
+    <span style={{
+      fontSize:'0.68rem', padding:'3px 8px', borderRadius:'6px',
+      fontWeight:'700', color, background:color+'1a',
+      whiteSpace:'nowrap', letterSpacing:'0.1px',
+    }}>
+      {children}
+    </span>
+  );
 }
 
 function StatCard({label,value,icon:Icon,color,T}){
   return(
     <div style={{
-      background:T.surface,borderRadius:'18px',padding:'15px',
-      boxShadow:T.cardShadow,display:'flex',alignItems:'center',gap:'12px',
+      background:T.surface, borderRadius:'18px', padding:'14px 14px',
+      boxShadow:T.cardShadow, display:'flex', alignItems:'center', gap:'12px',
       border:`1px solid ${T.border}`,
     }}>
-      <div style={{width:'44px',height:'44px',borderRadius:'14px',background:color+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,border:`1px solid ${color}22`}}>
-        <Icon size={20} color={color}/>
+      <div style={{width:'42px',height:'42px',borderRadius:'13px',background:color+'15',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+        <Icon size={19} color={color}/>
       </div>
       <div style={{minWidth:0}}>
-        <p style={{margin:0,fontSize:'0.68rem',color:T.textMuted,fontWeight:'500',letterSpacing:'0.2px'}}>{label}</p>
-        <p style={{margin:0,fontSize:'0.9rem',fontWeight:'800',color:T.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.3px'}}>{value}</p>
+        <p style={{margin:0,fontSize:'0.65rem',color:T.textMuted,fontWeight:'600',letterSpacing:'0.3px',textTransform:'uppercase'}}>{label}</p>
+        <p style={{margin:'2px 0 0',fontSize:'0.88rem',fontWeight:'800',color:T.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.4px'}}>{value}</p>
       </div>
     </div>
   );
 }
 
 function SaveBtn({onClick,label,T}){
-  return<button onClick={onClick} style={{width:'100%',padding:'14px',borderRadius:'14px',border:'none',background:`linear-gradient(135deg,${T.goldDark},${T.gold})`,color:'#fff',fontWeight:'800',fontSize:'0.95rem',cursor:'pointer',fontFamily:'inherit',marginTop:'8px'}}>{label}</button>;
+  return(
+    <button onClick={onClick} style={{
+      width:'100%', padding:'15px', borderRadius:'14px', border:'none',
+      background:`linear-gradient(135deg,${T.goldDark},${T.gold})`,
+      color:'#fff', fontWeight:'800', fontSize:'0.95rem',
+      cursor:'pointer', fontFamily:'inherit', marginTop:'10px',
+      boxShadow:`0 4px 20px ${T.gold}40`,
+      letterSpacing:'-0.2px',
+    }}>
+      {label}
+    </button>
+  );
 }
 function CancelBtn({onClick,label,T}){
-  return<button onClick={onClick} style={{width:'100%',padding:'12px',borderRadius:'14px',border:`1px solid ${T.border}`,background:'transparent',color:T.textMuted,fontWeight:'600',fontSize:'0.9rem',cursor:'pointer',fontFamily:'inherit',marginTop:'6px'}}>{label}</button>;
+  return(
+    <button onClick={onClick} style={{
+      width:'100%', padding:'13px', borderRadius:'14px',
+      border:`1.5px solid ${T.border}`, background:'transparent',
+      color:T.textMuted, fontWeight:'600', fontSize:'0.88rem',
+      cursor:'pointer', fontFamily:'inherit', marginTop:'8px',
+    }}>
+      {label}
+    </button>
+  );
 }
 function AddBtn({onClick,label,T}){
-  return<button onClick={onClick} style={{display:'flex',alignItems:'center',gap:'6px',padding:'10px 16px',borderRadius:'12px',border:'none',background:`linear-gradient(135deg,${T.goldDark},${T.gold})`,color:'#fff',fontWeight:'700',fontSize:'0.82rem',cursor:'pointer',fontFamily:'inherit'}}><Plus size={15}/>{label}</button>;
+  return(
+    <button onClick={onClick} style={{
+      display:'flex', alignItems:'center', gap:'5px',
+      padding:'10px 16px', borderRadius:'12px', border:'none',
+      background:`linear-gradient(135deg,${T.goldDark},${T.gold})`,
+      color:'#fff', fontWeight:'700', fontSize:'0.82rem',
+      cursor:'pointer', fontFamily:'inherit',
+      boxShadow:`0 3px 12px ${T.gold}35`,
+    }}>
+      <Plus size={14}/>{label}
+    </button>
+  );
 }
 function SmBtn({onClick,label,icon:Icon,color,T}){
-  return<button onClick={onClick} style={{display:'flex',alignItems:'center',gap:'4px',padding:'7px 12px',borderRadius:'10px',border:`1px solid ${color}44`,background:color+'11',color:color,fontWeight:'600',fontSize:'0.75rem',cursor:'pointer',fontFamily:'inherit'}}>{Icon&&<Icon size={12}/>}{label}</button>;
+  return(
+    <button onClick={onClick} style={{
+      display:'flex', alignItems:'center', gap:'4px',
+      padding:'7px 11px', borderRadius:'9px',
+      border:`1px solid ${color}30`, background:color+'0f',
+      color, fontWeight:'600', fontSize:'0.73rem',
+      cursor:'pointer', fontFamily:'inherit',
+      transition:'all 0.15s',
+    }}>
+      {Icon&&<Icon size={12}/>}{label}
+    </button>
+  );
 }
 
 // validate helper
@@ -301,15 +395,33 @@ function validate(fields,t){
 
 // Section header (iOS style)
 function SectionHeader({title,T}){
-  return<p style={{margin:'16px 0 6px',fontSize:'0.7rem',fontWeight:'600',color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.8px'}}>{title}</p>;
+  return(
+    <div style={{display:'flex',alignItems:'center',gap:'8px',margin:'20px 0 10px'}}>
+      <span style={{fontSize:'0.67rem',fontWeight:'700',color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.8px'}}>{title}</span>
+      <div style={{flex:1,height:'1px',background:T.border}}/>
+    </div>
+  );
 }
 
-// Sub tab bar
+// Sub tab bar — iOS segmented-style
 function SubTabs({tabs,active,onChange,T}){
   return(
-    <div style={{display:'flex',gap:'4px',overflowX:'auto',paddingBottom:'2px',marginBottom:'12px'}}>
+    <div style={{
+      display:'flex', gap:'0', background:T.surface2,
+      borderRadius:'12px', padding:'3px',
+      marginBottom:'14px', overflow:'hidden',
+      border:`1px solid ${T.border}`,
+    }}>
       {tabs.map(tab=>(
-        <button key={tab.id} onClick={()=>onChange(tab.id)} style={{padding:'7px 14px',borderRadius:'20px',border:'none',background:active===tab.id?T.gold:'transparent',color:active===tab.id?'#fff':T.textMuted,fontSize:'0.8rem',fontWeight:active===tab.id?'700':'500',cursor:'pointer',fontFamily:'inherit',whiteSpace:'nowrap',transition:'all 0.15s'}}>
+        <button key={tab.id} onClick={()=>onChange(tab.id)} style={{
+          flex:1, padding:'8px 6px', borderRadius:'10px', border:'none',
+          background: active===tab.id ? T.surface : 'transparent',
+          color: active===tab.id ? T.text : T.textMuted,
+          fontSize:'0.78rem', fontWeight: active===tab.id ? '700' : '500',
+          cursor:'pointer', fontFamily:'inherit', whiteSpace:'nowrap',
+          transition:'all 0.2s',
+          boxShadow: active===tab.id ? T.cardShadow || '0 1px 4px rgba(0,0,0,0.15)' : 'none',
+        }}>
           {tab.label}
         </button>
       ))}
@@ -1136,7 +1248,7 @@ export default function App(){
   const currentUser={id:userProfile?.uid,name:userProfile?.name||'مستخدم'};
   const pageProps={data,setData,lang,t,T,logActivity,currentUser,canDelete};
 
-  const spinner=msg=>(<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:T.bg}}><div style={{textAlign:'center'}}><div style={{width:'48px',height:'48px',border:`3px solid ${T.gold}`,borderTopColor:'transparent',borderRadius:'50%',animation:'spin 1s linear infinite',margin:'0 auto 1rem'}}/><p style={{color:T.textMuted,fontSize:'0.85rem'}}>{msg}</p></div><style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style></div>);
+  const spinner=msg=>(<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:T.bg,fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif'}}><div style={{textAlign:'center'}}><div style={{width:'52px',height:'52px',background:`linear-gradient(135deg,${T.goldDark},${T.gold})`,borderRadius:'16px',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px',boxShadow:`0 8px 24px ${T.gold}40`}}><div style={{width:'24px',height:'24px',border:'3px solid rgba(255,255,255,0.3)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/></div><p style={{color:T.textMuted,fontSize:'0.82rem',margin:0,fontWeight:'500'}}>{msg}</p></div><style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style></div>);
 
   if(authLoading)return spinner(lang==='ar'?'جاري التحقق...':'Authenticating...');
   if(!authUser)return <Login/>;
@@ -1267,27 +1379,37 @@ export default function App(){
 
       {/* MORE SHEET */}
       {moreOpen&&(
-        <div style={{position:'fixed',inset:0,zIndex:40,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,0.5)',backdropFilter:'blur(8px)'}} onClick={()=>setMoreOpen(false)}>
-          <div style={{background:T.surface,borderRadius:'24px 24px 0 0',width:'100%',maxWidth:'600px',padding:'20px',animation:'slideUp 0.25s ease',boxShadow:'0 -8px 40px rgba(0,0,0,0.2)'}} onClick={e=>e.stopPropagation()}>
-            <div style={{width:'40px',height:'4px',background:T.border,borderRadius:'2px',margin:'0 auto 20px'}}/>
-            <div style={{display:'flex',flexDirection:'column',gap:'4px'}}>
-              {/* User info */}
-              <div style={{display:'flex',alignItems:'center',gap:'12px',padding:'14px',background:T.surface2,borderRadius:'14px',marginBottom:'8px'}}>
-                <div style={{width:'44px',height:'44px',borderRadius:'50%',background:goldGrad,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',fontWeight:'700',color:'#000'}}>{userProfile?.name?.charAt(0)||'?'}</div>
-                <div><p style={{margin:0,color:T.text,fontWeight:'700',fontSize:'0.95rem'}}>{userProfile?.name}</p><p style={{margin:0,color:T.textMuted,fontSize:'0.75rem'}}>{role==='owner'?'👑 مالك':role==='assistant'?'🤝 مساعد':'👁 مشاهد'} • {userProfile?.email}</p></div>
+        <div style={{position:'fixed',inset:0,zIndex:40,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,0.6)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)'}} onClick={()=>setMoreOpen(false)}>
+          <div style={{background:T.surface,borderRadius:'28px 28px 0 0',width:'100%',maxWidth:'600px',padding:'0 16px 32px',animation:'slideUp 0.3s cubic-bezier(0.32,0.72,0,1)',boxShadow:'0 -20px 60px rgba(0,0,0,0.35)',border:`1px solid ${T.border}`,borderBottom:'none'}} onClick={e=>e.stopPropagation()}>
+            <div style={{width:'40px',height:'5px',background:T.border,borderRadius:'3px',margin:'14px auto 18px'}}/>
+            <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
+              {/* User card */}
+              <div style={{display:'flex',alignItems:'center',gap:'14px',padding:'16px',background:T.surface2,borderRadius:'18px',marginBottom:'4px',border:`1px solid ${T.border}`}}>
+                <div style={{width:'48px',height:'48px',borderRadius:'16px',background:goldGrad,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.2rem',fontWeight:'800',color:'#000',flexShrink:0,boxShadow:`0 4px 12px ${T.gold}40`}}>{userProfile?.name?.charAt(0)||'?'}</div>
+                <div style={{minWidth:0}}>
+                  <p style={{margin:0,color:T.text,fontWeight:'700',fontSize:'0.95rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{userProfile?.name}</p>
+                  <p style={{margin:'3px 0 0',color:T.textMuted,fontSize:'0.72rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    <span style={{background:T.gold+'22',color:T.gold,borderRadius:'5px',padding:'1px 6px',fontWeight:'700',fontSize:'0.65rem',marginLeft:'4px'}}>{role==='owner'?'مالك':role==='assistant'?'مساعد':'مشاهد'}</span>
+                    {' '}{userProfile?.email}
+                  </p>
+                </div>
               </div>
+
+              {/* Menu items */}
               {[
-                {id:'activityLog',icon:Activity,label:t.activityLog},
-                ...(role==='owner'?[{id:'userManagement',icon:Users,label:t.userManagement}]:[]),
-              ].map(({id,icon:Icon,label})=>(
-                <button key={id} onClick={()=>{setActivePage(id);setActiveTab('more');setMoreOpen(false);}} style={{display:'flex',alignItems:'center',gap:'12px',padding:'14px',background:T.surface2,borderRadius:'14px',border:'none',color:T.text,cursor:'pointer',fontFamily:'inherit',fontSize:'0.9rem',fontWeight:'500',width:'100%',textAlign:lang==='ar'?'right':'left'}}>
-                  <div style={{width:'36px',height:'36px',borderRadius:'10px',background:T.gold+'22',display:'flex',alignItems:'center',justifyContent:'center'}}><Icon size={18} color={T.gold}/></div>
-                  {label}
-                  <ChevronRight size={16} color={T.textMuted} style={{marginRight:'auto',transform:lang==='ar'?'rotate(180deg)':'none'}}/>
+                {id:'activityLog',icon:Activity,label:t.activityLog,color:T.info},
+                ...(role==='owner'?[{id:'userManagement',icon:Users,label:t.userManagement,color:T.gold}]:[]),
+              ].map(({id,icon:Icon,label,color})=>(
+                <button key={id} onClick={()=>{setActivePage(id);setActiveTab('more');setMoreOpen(false);}} style={{display:'flex',alignItems:'center',gap:'12px',padding:'14px 16px',background:T.surface2,borderRadius:'16px',border:`1px solid ${T.border}`,color:T.text,cursor:'pointer',fontFamily:'inherit',fontSize:'0.9rem',fontWeight:'600',width:'100%',textAlign:lang==='ar'?'right':'left',transition:'all 0.15s'}}>
+                  <div style={{width:'36px',height:'36px',borderRadius:'11px',background:color+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Icon size={17} color={color}/></div>
+                  <span style={{flex:1}}>{label}</span>
+                  <ChevronRight size={15} color={T.textDim} style={{transform:lang==='ar'?'rotate(180deg)':'none'}}/>
                 </button>
               ))}
-              <button onClick={handleSignOut} style={{display:'flex',alignItems:'center',gap:'12px',padding:'14px',background:T.danger+'11',borderRadius:'14px',border:'none',color:T.danger,cursor:'pointer',fontFamily:'inherit',fontSize:'0.9rem',fontWeight:'600',width:'100%',marginTop:'4px'}}>
-                <div style={{width:'36px',height:'36px',borderRadius:'10px',background:T.danger+'22',display:'flex',alignItems:'center',justifyContent:'center'}}><LogOut size={18} color={T.danger}/></div>
+
+              {/* Sign out */}
+              <button onClick={handleSignOut} style={{display:'flex',alignItems:'center',gap:'12px',padding:'14px 16px',background:T.danger+'0d',borderRadius:'16px',border:`1px solid ${T.danger}22`,color:T.danger,cursor:'pointer',fontFamily:'inherit',fontSize:'0.9rem',fontWeight:'700',width:'100%',marginTop:'2px'}}>
+                <div style={{width:'36px',height:'36px',borderRadius:'11px',background:T.danger+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><LogOut size={17} color={T.danger}/></div>
                 {lang==='ar'?'تسجيل الخروج':'Sign Out'}
               </button>
             </div>
