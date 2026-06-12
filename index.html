@@ -3,12 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#0f172a" />
     <title>منصة إدارة الأصول الشخصية</title>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f1f5f9; }
+      /* Dynamic viewport — accounts for mobile browser chrome (address bar, gesture bar) */
+      :root {
+        --app-height: 100dvh;
+        --nav-height: 80px;
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --content-bottom: calc(var(--nav-height) + var(--safe-bottom) + 16px);
+      }
+      /* Fallback for browsers without dvh support */
+      @supports not (height: 100dvh) {
+        :root { --app-height: 100vh; }
+      }
       /* Tailwind-like utilities */
       .fixed{position:fixed}.relative{position:relative}.absolute{position:absolute}
       .inset-0{inset:0}.top-0{top:0}.bottom-0{bottom:0}.z-30{z-index:30}.z-40{z-index:40}.z-50{z-index:50}

@@ -1410,7 +1410,7 @@ export default function App(){
   const goldGrad=`linear-gradient(135deg,${T.goldDark},${T.gold})`;
 
   return(
-    <div dir={dir} style={{minHeight:'100vh',background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue","Segoe UI",system-ui,sans-serif'}}>
+    <div dir={dir} style={{minHeight:'var(--app-height,100vh)',background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue","Segoe UI",system-ui,sans-serif'}}>
       <style>{`
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
         @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -1452,7 +1452,7 @@ export default function App(){
       </header>
 
       {/* CONTENT */}
-      <main style={{padding:'14px',paddingBottom:'90px',maxWidth:'600px',margin:'0 auto',boxSizing:'border-box'}}>
+      <main style={{padding:'14px',paddingBottom:'var(--content-bottom,110px)',maxWidth:'600px',margin:'0 auto',boxSizing:'border-box'}}>
         {/* Sub nav for assets */}
         {activeTab==='assets'&&<SubTabs tabs={assetSubTabs} active={assetSub} onChange={id=>{setAssetSub(id);setActivePage(id);}} T={T}/>}
         {/* Sub nav for operations */}
@@ -1463,10 +1463,12 @@ export default function App(){
       {/* BOTTOM TAB BAR — iOS style */}
       <nav style={{
         position:'fixed',bottom:0,left:0,right:0,
-        height:'80px',paddingBottom:'env(safe-area-inset-bottom,8px)',
-        background:isDark?'rgba(10,20,42,0.88)':'rgba(249,249,249,0.92)',
+        height:'calc(var(--nav-height,80px) + var(--safe-bottom,0px))',
+        paddingBottom:'var(--safe-bottom,0px)',
+        background:isDark?'rgba(10,20,42,0.95)':'rgba(249,249,249,0.97)',
         borderTop:`1px solid ${T.border}`,
-        display:'flex',alignItems:'center',justifyContent:'space-around',
+        display:'flex',alignItems:'flex-start',justifyContent:'space-around',
+        paddingTop:'4px',
         backdropFilter:'blur(28px)',WebkitBackdropFilter:'blur(28px)',zIndex:30
       }}>
         {BOTTOM_TABS.map(({id,icon:Icon})=>{
