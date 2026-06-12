@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, onSnapshot, runTransaction } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import Login from "./Login";
 import UserManagement from "./UserManagement";
@@ -1422,8 +1422,16 @@ export default function App(){
   const [userProfile,setUserProfile]=useState(null);
   const [authLoading,setAuthLoading]=useState(true);
   const [saveStatus,setSaveStatus]=useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
+  const [syncNotice,setSyncNotice]=useState(null);    // name of user whose change was just merged in
   const saveTimer=useRef(null);
   const savedTimer=useRef(null);
+  const noticeTimer=useRef(null);
+  // ── Optimistic concurrency control for the shared platform/main doc ──
+  const clientId=useRef(genId());     // unique per browser session
+  const baseRev=useRef(0);            // revision our local copy is based on
+  const applyingRemote=useRef(false); // true while applying a snapshot, so the save effect skips
+  const dirty=useRef(false);          // true when we hold unsaved local edits
+  const pendingRemote=useRef(null);   // remote doc deferred because we were mid-edit
   const t=TR[lang];
   const T=isDark?DARK:LIGHT;
   DATE_CAL=cal;   // applied synchronously before children render
@@ -1464,24 +1472,71 @@ export default function App(){
 
   useEffect(()=>{
     if(!authUser)return;
-    const load=async()=>{
-      setLoading(true);
-      try{const snap=await getDoc(doc(db,'platform','main'));if(snap.exists())setData(snap.data());else{const sample=buildSampleData();await setDoc(doc(db,'platform','main'),sample);setData(sample);}}
-      catch(e){setData(buildSampleData());}
-      finally{setLoading(false);}
-    };
-    load();
+    setLoading(true);
+    const ref=doc(db,'platform','main');
+    let first=true;
+    const unsub=onSnapshot(ref,async snap=>{
+      // First emission: seed sample data if the platform doc doesn't exist yet
+      if(!snap.exists()){
+        if(first){const sample=buildSampleData();try{await setDoc(ref,{...sample,_rev:1,_client:clientId.current,updatedAt:new Date().toISOString(),updatedBy:userProfile?.name||'?'});baseRev.current=1;}catch(e){console.error(e);}}
+        first=false;setLoading(false);return;
+      }
+      const d=snap.data();
+      const rev=d._rev||0;
+      first=false;setLoading(false);
+      // Our own committed write echoing back — just sync the revision pointer
+      if(d._client===clientId.current){baseRev.current=Math.max(baseRev.current,rev);return;}
+      // A change from another client (or the initial load of a legacy doc)
+      if(dirty.current){
+        // We have unsaved edits — defer; the save transaction will detect the conflict and reconcile
+        pendingRemote.current=d;return;
+      }
+      baseRev.current=rev;
+      applyingRemote.current=true;
+      setData(d);
+      if(d.updatedBy){setSyncNotice(d.updatedBy);clearTimeout(noticeTimer.current);noticeTimer.current=setTimeout(()=>setSyncNotice(null),3500);}
+    },err=>{console.error(err);setLoading(false);});
+    return unsub;
   },[authUser]);
+
+  // Apply a remote doc into local state without re-triggering a save
+  const applyRemote=useCallback(d=>{
+    baseRev.current=d._rev||0;
+    applyingRemote.current=true;
+    dirty.current=false;
+    setData(d);
+    if(d.updatedBy){setSyncNotice(d.updatedBy);clearTimeout(noticeTimer.current);noticeTimer.current=setTimeout(()=>setSyncNotice(null),3500);}
+  },[]);
 
   useEffect(()=>{
     if(!authUser||loading||!data)return;
+    // Skip the save that a remote-applied snapshot would otherwise trigger
+    if(applyingRemote.current){applyingRemote.current=false;return;}
+    dirty.current=true;
     clearTimeout(saveTimer.current);
     setSaveStatus('saving');
-    saveTimer.current=setTimeout(()=>{
-      const payload={...data,updatedAt:new Date().toISOString(),updatedBy:userProfile?.name||'?'};
-      setDoc(doc(db,'platform','main'),payload)
-        .then(()=>{setSaveStatus('saved');clearTimeout(savedTimer.current);savedTimer.current=setTimeout(()=>setSaveStatus('idle'),2200);})
-        .catch(e=>{console.error(e);setSaveStatus('error');});
+    saveTimer.current=setTimeout(async()=>{
+      const ref=doc(db,'platform','main');
+      try{
+        const newRev=await runTransaction(db,async tx=>{
+          const snap=await tx.get(ref);
+          const remoteRev=snap.exists()?(snap.data()._rev||0):0;
+          // Someone else committed after the version we edited → conflict
+          if(remoteRev>baseRev.current){const e=new Error('conflict');e.conflict=true;e.remote=snap.data();throw e;}
+          const nr=remoteRev+1;
+          tx.set(ref,{...data,_rev:nr,_client:clientId.current,updatedAt:new Date().toISOString(),updatedBy:userProfile?.name||'?'});
+          return nr;
+        });
+        baseRev.current=newRev;dirty.current=false;
+        setSaveStatus('saved');clearTimeout(savedTimer.current);savedTimer.current=setTimeout(()=>setSaveStatus('idle'),2200);
+      }catch(e){
+        if(e&&e.conflict){
+          // Another user's write wins to avoid clobbering their data; reload it locally.
+          const remote=pendingRemote.current||e.remote;pendingRemote.current=null;
+          if(remote)applyRemote(remote);
+          setSaveStatus('conflict');clearTimeout(savedTimer.current);savedTimer.current=setTimeout(()=>setSaveStatus('idle'),4000);
+        }else{console.error(e);setSaveStatus('error');}
+      }
     },2000);
     return()=>clearTimeout(saveTimer.current);
   },[data,authUser,loading]);
@@ -1493,7 +1548,16 @@ export default function App(){
 
   const handleSignOut=async()=>{
     clearTimeout(saveTimer.current);
-    if(data)await setDoc(doc(db,'platform','main'),data).catch(()=>{});
+    // Flush any unsaved edits, but never clobber a newer write from another user
+    if(data&&dirty.current){
+      const ref=doc(db,'platform','main');
+      try{await runTransaction(db,async tx=>{
+        const snap=await tx.get(ref);
+        const remoteRev=snap.exists()?(snap.data()._rev||0):0;
+        if(remoteRev>baseRev.current)return; // someone else is newer — abandon local flush
+        tx.set(ref,{...data,_rev:remoteRev+1,_client:clientId.current,updatedAt:new Date().toISOString(),updatedBy:userProfile?.name||'?'});
+      });}catch(e){console.error(e);}
+    }
     await signOut(auth);
   };
 
@@ -1635,18 +1699,23 @@ export default function App(){
 
         {/* Right controls */}
         <div style={{display:'flex',alignItems:'center',gap:'6px',flexShrink:0}}>
-          {saveStatus!=='idle'&&(
-            <span title={saveStatus} style={{
-              display:'flex',alignItems:'center',gap:'4px',padding:'5px 8px',borderRadius:'9px',
-              fontSize:'0.66rem',fontWeight:'700',
-              background:(saveStatus==='error'?T.danger:saveStatus==='saved'?T.success:T.textMuted)+'18',
-              color:saveStatus==='error'?T.danger:saveStatus==='saved'?T.success:T.textMuted,
-            }}>
-              <span style={{width:'6px',height:'6px',borderRadius:'50%',background:'currentColor',
-                animation:saveStatus==='saving'?'pulse 1s ease-in-out infinite':'none'}}/>
-              {saveStatus==='saving'?(lang==='ar'?'حفظ…':'Saving…'):saveStatus==='saved'?(lang==='ar'?'محفوظ':'Saved'):(lang==='ar'?'فشل':'Failed')}
-            </span>
-          )}
+          {saveStatus!=='idle'&&(()=>{
+            const c=saveStatus==='error'||saveStatus==='conflict'?T.warning:saveStatus==='saved'?T.success:T.textMuted;
+            const label=saveStatus==='saving'?(lang==='ar'?'حفظ…':'Saving…')
+              :saveStatus==='saved'?(lang==='ar'?'محفوظ':'Saved')
+              :saveStatus==='conflict'?(lang==='ar'?'حُدّث':'Synced')
+              :(lang==='ar'?'فشل':'Failed');
+            return(
+              <span title={saveStatus} style={{
+                display:'flex',alignItems:'center',gap:'4px',padding:'5px 8px',borderRadius:'9px',
+                fontSize:'0.66rem',fontWeight:'700',background:c+'18',color:c,
+              }}>
+                <span style={{width:'6px',height:'6px',borderRadius:'50%',background:'currentColor',
+                  animation:saveStatus==='saving'?'pulse 1s ease-in-out infinite':'none'}}/>
+                {label}
+              </span>
+            );
+          })()}
           {alertCount>0&&(
             <button onClick={()=>{navigate('dashboard');}} style={{
               background:T.danger+'18',border:`1px solid ${T.danger}33`,
@@ -1868,6 +1937,21 @@ export default function App(){
             </div>
           </div>
         </>
+      )}
+
+      {/* ── Live-sync toast: another user's change was merged in ── */}
+      {syncNotice&&(
+        <div style={{
+          position:'fixed',bottom:'calc(var(--safe-bottom,0px) + 18px)',left:'50%',transform:'translateX(-50%)',
+          zIndex:45,background:T.surface,border:`1px solid ${T.border}`,borderRadius:'14px',
+          padding:'10px 16px',boxShadow:'0 10px 30px rgba(0,0,0,0.3)',
+          display:'flex',alignItems:'center',gap:'8px',animation:'fadeIn 0.25s ease',maxWidth:'90vw',
+        }}>
+          <span style={{width:'8px',height:'8px',borderRadius:'50%',background:T.info,flexShrink:0}}/>
+          <span style={{fontSize:'0.78rem',color:T.text,fontWeight:'600'}}>
+            {lang==='ar'?`تم تحديث البيانات بواسطة ${syncNotice}`:`Data updated by ${syncNotice}`}
+          </span>
+        </div>
       )}
 
       {/* ── CONTENT ── */}
