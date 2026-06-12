@@ -19,22 +19,24 @@ import {
 
 // ═══ THEMES ═══
 const DARK = {
-  bg:'#050c1a', surface:'#0b1830', surface2:'#0e1e3a',
-  border:'#1a3460', borderGold:'#c9a84c22',
-  gold:'#c9a84c', goldLight:'#e8d48a', goldDark:'#8a6520',
-  text:'#e4eeff', textMuted:'#5a7aaa', textDim:'#2e4a70',
-  success:'#30d158', danger:'#ff453a', warning:'#ffd60a', info:'#0a84ff',
-  tabBar:'#0b1830', cardShadow:'none', inputBg:'#0e1e3a',
-  glassCard:'rgba(255,255,255,0.04)', glassBorder:'rgba(255,255,255,0.07)',
+  bg:'#040a16', surface:'#0a1628', surface2:'#0f2038',
+  border:'#1c3458', borderGold:'#c9a84c2e',
+  gold:'#cbac57', goldLight:'#ead591', goldDark:'#8a6520',
+  text:'#eaf2ff', textMuted:'#6b8bba', textDim:'#33507a',
+  success:'#34d667', danger:'#ff5247', warning:'#ffcf2e', info:'#2a93ff',
+  tabBar:'rgba(10,22,40,0.82)', inputBg:'#0d1c34',
+  cardShadow:'0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(2,8,20,0.9)',
+  glassCard:'rgba(255,255,255,0.045)', glassBorder:'rgba(255,255,255,0.08)',
 };
 const LIGHT = {
-  bg:'#ECEEF2', surface:'#FFFFFF', surface2:'#F5F5F7',
-  border:'#D8D8DC', borderGold:'#c9a84c55',
+  bg:'#EBEDF1', surface:'#FFFFFF', surface2:'#F4F5F8',
+  border:'#DCDEE4', borderGold:'#9A6E0D55',
   gold:'#9A6E0D', goldLight:'#C4860E', goldDark:'#6b4a08',
-  text:'#1C1C1E', textMuted:'#636366', textDim:'#AEAEB2',
-  success:'#248A3D', danger:'#D70015', warning:'#C45000', info:'#0060CE',
-  tabBar:'rgba(248,248,252,0.97)', cardShadow:'0 2px 10px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)', inputBg:'#F0F0F5',
-  glassCard:'rgba(255,255,255,0.95)', glassBorder:'rgba(0,0,0,0.08)',
+  text:'#16181D', textMuted:'#5C6270', textDim:'#A6AAB5',
+  success:'#1E8A3C', danger:'#D7261A', warning:'#B85C00', info:'#0060CE',
+  tabBar:'rgba(248,248,252,0.85)', inputBg:'#F1F2F6',
+  cardShadow:'0 1px 0 rgba(255,255,255,0.7) inset, 0 6px 18px -10px rgba(20,28,48,0.22), 0 0 0 1px rgba(20,28,48,0.05)',
+  glassCard:'rgba(255,255,255,0.96)', glassBorder:'rgba(20,28,48,0.08)',
 };
 
 const TR = {
@@ -334,19 +336,20 @@ function Badge({color,children}){
 function StatCard({label,value,icon:Icon,iconText,color,T}){
   return(
     <div style={{
-      background:T.surface, borderRadius:'18px', padding:'14px',
+      background:T.surface, borderRadius:'18px', padding:'15px',
       boxShadow:T.cardShadow, display:'flex', alignItems:'flex-start', gap:'12px',
-      border:`1px solid ${T.border}`,
+      border:`1px solid ${T.border}`, position:'relative', overflow:'hidden',
     }}>
-      <div style={{width:'42px',height:'42px',borderRadius:'13px',background:color+'15',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+      <div aria-hidden style={{position:'absolute',inset:0,background:`radial-gradient(120% 90% at 100% 0%, ${color}0e, transparent 55%)`,pointerEvents:'none'}}/>
+      <div style={{width:'42px',height:'42px',borderRadius:'13px',background:color+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,border:`1px solid ${color}24`,position:'relative'}}>
         {iconText
-          ? <span style={{fontSize:'1rem',fontWeight:'900',color,fontFamily:'-apple-system,sans-serif'}}>{iconText}</span>
+          ? <span style={{fontSize:'1rem',fontWeight:'800',color}}>{iconText}</span>
           : <Icon size={19} color={color}/>
         }
       </div>
-      <div style={{minWidth:0,flex:1}}>
-        <p style={{margin:0,fontSize:'0.65rem',color:T.textMuted,fontWeight:'600',letterSpacing:'0.3px',textTransform:'uppercase'}}>{label}</p>
-        <p style={{margin:'3px 0 0',fontSize:'clamp(0.7rem,2.8vw,0.85rem)',fontWeight:'800',color:T.text,whiteSpace:'nowrap',letterSpacing:'-0.3px',lineHeight:'1.3'}}>{value}</p>
+      <div style={{minWidth:0,flex:1,position:'relative'}}>
+        <p style={{margin:0,fontSize:'0.64rem',color:T.textMuted,fontWeight:'600',letterSpacing:'0.4px',textTransform:'uppercase'}}>{label}</p>
+        <p style={{margin:'4px 0 0',fontSize:'clamp(0.74rem,2.8vw,0.9rem)',fontWeight:'700',color:T.text,whiteSpace:'nowrap',letterSpacing:'-0.4px',lineHeight:'1.25',fontVariantNumeric:'tabular-nums'}}>{value}</p>
       </div>
     </div>
   );
@@ -1518,30 +1521,26 @@ export default function App(){
   ];
 
   return(
-    <div dir={dir} style={{minHeight:'var(--app-height,100vh)',background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue","Segoe UI",system-ui,sans-serif'}}>
+    <div dir={dir} style={{minHeight:'var(--app-height,100vh)',background:T.bg,color:T.text,fontFamily:"'IBM Plex Sans Arabic','Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,system-ui,sans-serif"}}>
       <style>{`
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
         @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
         @keyframes dropDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-        ::-webkit-scrollbar{width:3px;height:3px}
-        ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:${T.border};border-radius:2px}
         input[type=date]::-webkit-calendar-picker-indicator{filter:${isDark?'invert(0.7)':'none'}}
         select option{background:${T.surface};color:${T.text}}
         @media print{header,footer{display:none!important}}
-        button:active{transform:scale(0.97);transition:transform 0.1s}
-        main > *{animation:fadeIn 0.2s ease}
+        main > *{animation:fadeIn 0.28s cubic-bezier(0.32,0.72,0,1)}
       `}</style>
 
       {/* ── HEADER ── */}
       <header style={{
-        background:isDark?'rgba(5,12,26,0.92)':'rgba(249,249,252,0.95)',
+        background:isDark?'rgba(4,10,22,0.72)':'rgba(248,249,252,0.78)',
         borderBottom:`1px solid ${T.border}`,
-        padding:'12px 14px',
+        padding:'13px 15px',
         display:'flex',alignItems:'center',gap:'8px',
         position:'sticky',top:0,zIndex:40,
-        backdropFilter:'blur(28px)',WebkitBackdropFilter:'blur(28px)',
+        backdropFilter:'blur(28px) saturate(180%)',WebkitBackdropFilter:'blur(28px) saturate(180%)',
       }}>
 
         {/* Nav trigger — page title + chevron */}

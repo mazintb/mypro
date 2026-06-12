@@ -7,11 +7,37 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#050c1a" />
+    <meta name="description" content="منصة احترافية لإدارة الأصول الشخصية والعقارات والشركات والمركبات والاستثمارات" />
     <title>منصة إدارة الأصول الشخصية</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f1f5f9; }
+      html { scroll-behavior: smooth; }
+      body {
+        font-family: 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        background: #050c1a;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-variant-numeric: tabular-nums;
+        text-rendering: optimizeLegibility;
+      }
+      /* Tabular figures for all numeric/data surfaces keep columns aligned */
+      input, button, select, textarea, table { font-variant-numeric: tabular-nums; }
+      /* Physical press feedback + smooth interaction across the whole app */
+      button { transition: transform .15s cubic-bezier(.32,.72,0,1), filter .18s ease, box-shadow .18s ease, background .18s ease; }
+      button:hover { filter: brightness(1.07); }
+      button:active { transform: scale(.97); filter: brightness(1); }
+      /* Accessible keyboard focus ring without disturbing mouse users */
+      :focus-visible { outline: 2px solid #c9a84c; outline-offset: 2px; border-radius: 8px; }
+      ::selection { background: rgba(201,168,76,.28); }
+      /* Tinted, refined scrollbars */
+      ::-webkit-scrollbar { width: 9px; height: 9px; }
+      ::-webkit-scrollbar-thumb { background: rgba(201,168,76,.22); border-radius: 8px; }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(201,168,76,.38); }
+      ::-webkit-scrollbar-track { background: transparent; }
       /* Dynamic viewport — accounts for mobile browser chrome (address bar, gesture bar) */
       :root {
         --app-height: 100dvh;
