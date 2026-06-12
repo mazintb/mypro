@@ -1233,26 +1233,14 @@ function ActivityLogPage({data,lang,t,T}){
     </div>
   );
 }
-// ═══ BOTTOM TAB NAV + MAIN APP ═══
-const BOTTOM_TABS = [
-  {id:'dashboard',icon:Home},
-  {id:'assets',icon:Building2},
-  {id:'operations',icon:Wrench},
-  {id:'finance',icon:BarChart2},
-  {id:'more',icon:MoreHorizontal},
-];
-const ASSET_SUBS = ['realEstate','companies','vehicles','investments'];
-const OPS_SUBS = ['operations','loansGiven'];
+// ═══ MAIN APP ═══
 
 export default function App(){
   const [lang,setLang]=useState('ar');
   const [isDark,setIsDark]=useState(true);
-  const [activeTab,setActiveTab]=useState('dashboard');
   const [activePage,setActivePage]=useState('dashboard');
-  const [assetSub,setAssetSub]=useState('realEstate');
-  const [opSub,setOpSub]=useState('operations');
+  const [navOpen,setNavOpen]=useState(false);
   const [blockedReason,setBlockedReason]=useState(null); // 'inactive' | 'unauthorized'
-  const [moreOpen,setMoreOpen]=useState(false);
   const [data,setData]=useState(null);
   const [loading,setLoading]=useState(true);
   const [authUser,setAuthUser]=useState(null);
@@ -1375,17 +1363,8 @@ export default function App(){
     return c;
   })();
 
-  const assetSubTabs=[{id:'realEstate',label:t.realEstate},{id:'companies',label:t.companies},{id:'vehicles',label:t.vehicles},{id:'investments',label:t.investments}];
-  const opsSubTabs=[{id:'operations',label:t.operations},{id:'loansGiven',label:t.loansGiven}];
-
-  const handleTabPress=tab=>{
-    if(tab==='more'){setMoreOpen(true);return;}
-    setActiveTab(tab);
-    if(tab==='dashboard')setActivePage('dashboard');
-    else if(tab==='assets')setActivePage(assetSub);
-    else if(tab==='operations')setActivePage(opSub);
-    else if(tab==='finance')setActivePage('finance');
-  };
+  // ── Navigation helper ──
+  const navigate=(page)=>{ setActivePage(page); setNavOpen(false); };
 
   const renderPage=()=>{
     if(activePage==='dashboard')return<Dashboard {...pageProps}/>;
@@ -1401,13 +1380,31 @@ export default function App(){
     return null;
   };
 
-  const pageTitle=()=>{
-    if(activePage==='dashboard')return t.dashboard;
-    if(activePage==='finance')return t.financeTab;
-    return t[activePage]||activePage;
-  };
+  const pageTitle=(()=>{
+    const map={dashboard:t.dashboard,finance:t.financeTab,realEstate:t.realEstate,companies:t.companies,vehicles:t.vehicles,investments:t.investments,operations:t.operations,loansGiven:t.loansGiven,activityLog:t.activityLog,userManagement:t.userManagement};
+    return map[activePage]||activePage;
+  })();
 
   const goldGrad=`linear-gradient(135deg,${T.goldDark},${T.gold})`;
+
+  // ── Nav menu structure ──
+  const NAV_ITEMS=[
+    {id:'dashboard',   icon:Home,       label:t.dashboard,      color:T.gold},
+    {id:'assets-group',icon:Building2,  label:t.assets,         color:T.info, children:[
+      {id:'realEstate',  icon:Home,        label:t.realEstate},
+      {id:'companies',   icon:Building2,   label:t.companies},
+      {id:'vehicles',    icon:Car,         label:t.vehicles},
+      {id:'investments', icon:TrendingUp,  label:t.investments},
+    ]},
+    {id:'ops-group',   icon:Wrench,     label:t.operationsTab,  color:T.warning, children:[
+      {id:'operations',  icon:Wrench,      label:t.operations},
+      {id:'loansGiven',  icon:HandCoins,   label:t.loansGiven},
+    ]},
+    {id:'finance',     icon:BarChart2,  label:t.financeTab,     color:'#a855f7'},
+    {id:'divider1'},
+    {id:'activityLog', icon:Activity,   label:t.activityLog,    color:T.info},
+    ...(role==='owner'?[{id:'userManagement',icon:Users,label:t.userManagement,color:T.gold}]:[]),
+  ];
 
   return(
     <div dir={dir} style={{minHeight:'var(--app-height,100vh)',background:T.bg,color:T.text,fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue","Segoe UI",system-ui,sans-serif'}}>
@@ -1415,127 +1412,241 @@ export default function App(){
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
         @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes dropDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
         ::-webkit-scrollbar{width:3px;height:3px}
         ::-webkit-scrollbar-track{background:transparent}
         ::-webkit-scrollbar-thumb{background:${T.border};border-radius:2px}
         input[type=date]::-webkit-calendar-picker-indicator{filter:${isDark?'invert(0.7)':'none'}}
         select option{background:${T.surface};color:${T.text}}
-        @media print{header,footer,nav{display:none!important}}
+        @media print{header,footer{display:none!important}}
         button:active{transform:scale(0.97);transition:transform 0.1s}
         main > *{animation:fadeIn 0.2s ease}
       `}</style>
 
-      {/* HEADER */}
+      {/* ── HEADER ── */}
       <header style={{
-        background:isDark?'rgba(5,12,26,0.85)':'rgba(249,249,249,0.92)',
+        background:isDark?'rgba(5,12,26,0.92)':'rgba(249,249,252,0.95)',
         borderBottom:`1px solid ${T.border}`,
-        padding:'14px 16px 12px',
+        padding:'12px 14px',
         display:'flex',alignItems:'center',gap:'8px',
-        position:'sticky',top:0,zIndex:30,
+        position:'sticky',top:0,zIndex:40,
         backdropFilter:'blur(28px)',WebkitBackdropFilter:'blur(28px)',
       }}>
-        <h2 style={{margin:0,color:T.text,fontWeight:'700',fontSize:'1.05rem',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.3px'}}>{pageTitle()}</h2>
-        <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+
+        {/* Nav trigger — page title + chevron */}
+        <button onClick={()=>setNavOpen(v=>!v)} style={{
+          display:'flex',alignItems:'center',gap:'5px',flex:1,
+          background:'none',border:'none',cursor:'pointer',
+          padding:'4px 0',minWidth:0,
+        }}>
+          <h2 style={{
+            margin:0,color:T.text,fontWeight:'700',fontSize:'1.05rem',
+            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+            letterSpacing:'-0.3px',flex:1,textAlign:lang==='ar'?'right':'left',
+          }}>{pageTitle}</h2>
+          <ChevronDown size={16} color={T.gold} style={{
+            flexShrink:0,
+            transform:navOpen?'rotate(180deg)':'rotate(0deg)',
+            transition:'transform 0.25s ease',
+          }}/>
+        </button>
+
+        {/* Right controls */}
+        <div style={{display:'flex',alignItems:'center',gap:'6px',flexShrink:0}}>
           {alertCount>0&&(
-            <button onClick={()=>{setActiveTab('dashboard');setActivePage('dashboard');}} style={{position:'relative',background:T.danger+'18',border:`1px solid ${T.danger}33`,borderRadius:'10px',padding:'6px 10px',cursor:'pointer',display:'flex',alignItems:'center',gap:'4px',color:T.danger}}>
+            <button onClick={()=>{navigate('dashboard');}} style={{
+              background:T.danger+'18',border:`1px solid ${T.danger}33`,
+              borderRadius:'10px',padding:'6px 10px',cursor:'pointer',
+              display:'flex',alignItems:'center',gap:'4px',color:T.danger,
+            }}>
               <Bell size={13}/>
               <span style={{fontSize:'0.7rem',fontWeight:'800'}}>{alertCount}</span>
             </button>
           )}
-          <button onClick={()=>setIsDark(d=>!d)} style={{display:'flex',alignItems:'center',justifyContent:'center',width:'34px',height:'34px',borderRadius:'10px',border:`1px solid ${T.border}`,background:T.surface2,cursor:'pointer',color:T.textMuted}}>
+          <button onClick={()=>setIsDark(d=>!d)} style={{
+            display:'flex',alignItems:'center',justifyContent:'center',
+            width:'34px',height:'34px',borderRadius:'10px',
+            border:`1px solid ${T.border}`,background:T.surface2,
+            cursor:'pointer',color:T.textMuted,
+          }}>
             {isDark?<Sun size={15}/>:<Moon size={15}/>}
           </button>
-          <button onClick={()=>setLang(l=>l==='ar'?'en':'ar')} style={{display:'flex',alignItems:'center',gap:'3px',padding:'6px 10px',background:T.surface2,border:`1px solid ${T.border}`,borderRadius:'10px',color:T.textMuted,cursor:'pointer',fontFamily:'inherit',fontSize:'0.75rem',fontWeight:'700'}}>
+          <button onClick={()=>setLang(l=>l==='ar'?'en':'ar')} style={{
+            display:'flex',alignItems:'center',gap:'3px',padding:'6px 10px',
+            background:T.surface2,border:`1px solid ${T.border}`,
+            borderRadius:'10px',color:T.textMuted,cursor:'pointer',
+            fontFamily:'inherit',fontSize:'0.75rem',fontWeight:'700',
+          }}>
             {lang==='ar'?'EN':'ع'}
           </button>
         </div>
       </header>
 
-      {/* CONTENT */}
-      <main style={{padding:'14px',paddingBottom:'var(--content-bottom,110px)',maxWidth:'600px',margin:'0 auto',boxSizing:'border-box'}}>
-        {/* Sub nav for assets */}
-        {activeTab==='assets'&&<SubTabs tabs={assetSubTabs} active={assetSub} onChange={id=>{setAssetSub(id);setActivePage(id);}} T={T}/>}
-        {/* Sub nav for operations */}
-        {activeTab==='operations'&&<SubTabs tabs={opsSubTabs} active={opSub} onChange={id=>{setOpSub(id);setActivePage(id);}} T={T}/>}
-        {renderPage()}
-      </main>
-
-      {/* BOTTOM TAB BAR — iOS style */}
-      <nav style={{
-        position:'fixed',bottom:0,left:0,right:0,
-        height:'calc(var(--nav-height,80px) + var(--safe-bottom,0px))',
-        paddingBottom:'var(--safe-bottom,0px)',
-        background:isDark?'rgba(10,20,42,0.95)':'rgba(249,249,249,0.97)',
-        borderTop:`1px solid ${T.border}`,
-        display:'flex',alignItems:'flex-start',justifyContent:'space-around',
-        paddingTop:'4px',
-        backdropFilter:'blur(28px)',WebkitBackdropFilter:'blur(28px)',zIndex:30
-      }}>
-        {BOTTOM_TABS.map(({id,icon:Icon})=>{
-          const isActive=activeTab===id;
-          const label={dashboard:t.dashboard,assets:t.assets,operations:t.operationsTab,finance:t.financeTab,more:t.more}[id];
-          return(
-            <button key={id} onClick={()=>handleTabPress(id)} style={{
-              display:'flex',flexDirection:'column',alignItems:'center',gap:'4px',
-              background:'none',border:'none',
-              color:isActive?T.gold:T.textMuted,
-              cursor:'pointer',fontFamily:'inherit',flex:1,padding:'8px 0',
-              transition:'color 0.15s',position:'relative',
+      {/* ── DROPDOWN MENU ── */}
+      {navOpen&&(
+        <>
+          {/* Backdrop */}
+          <div onClick={()=>setNavOpen(false)} style={{
+            position:'fixed',inset:0,zIndex:35,
+            background:'rgba(0,0,0,0.35)',
+            backdropFilter:'blur(4px)',WebkitBackdropFilter:'blur(4px)',
+          }}/>
+          {/* Panel */}
+          <div style={{
+            position:'fixed',top:'57px',
+            [lang==='ar'?'right':'left']:'0',
+            [lang==='ar'?'left':'right']:'0',
+            zIndex:39,
+            maxWidth:'600px',
+            margin:'0 auto',
+            padding:'0 12px',
+            animation:'dropDown 0.22s cubic-bezier(0.32,0.72,0,1)',
+          }}>
+            <div style={{
+              background:isDark?'rgba(11,24,48,0.98)':'rgba(255,255,255,0.99)',
+              border:`1px solid ${T.border}`,
+              borderRadius:'20px',
+              boxShadow:`0 16px 48px rgba(0,0,0,${isDark?'0.6':'0.15'})`,
+              overflow:'hidden',
             }}>
-              {id==='dashboard'&&alertCount>0&&!isActive&&<span style={{position:'absolute',top:'6px',[lang==='ar'?'left':'right']:'calc(50% - 16px)',width:'9px',height:'9px',background:T.danger,borderRadius:'50%',border:`2px solid ${T.bg}`}}/>}
-              <div style={{
-                width:isActive?'44px':'36px',height:isActive?'30px':'28px',
-                background:isActive?T.gold+'18':'transparent',
-                borderRadius:'10px',display:'flex',alignItems:'center',justifyContent:'center',
-                transition:'all 0.2s',
-              }}>
-                <Icon size={20} strokeWidth={isActive?2.5:1.8}/>
-              </div>
-              <span style={{fontSize:'0.6rem',fontWeight:isActive?'700':'400',letterSpacing:'-0.2px'}}>{label}</span>
-            </button>
-          );
-        })}
-      </nav>
 
-      {/* MORE SHEET */}
-      {moreOpen&&(
-        <div style={{position:'fixed',inset:0,zIndex:40,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,0.6)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)'}} onClick={()=>setMoreOpen(false)}>
-          <div style={{background:T.surface,borderRadius:'28px 28px 0 0',width:'100%',maxWidth:'600px',padding:'0 16px 32px',animation:'slideUp 0.3s cubic-bezier(0.32,0.72,0,1)',boxShadow:'0 -20px 60px rgba(0,0,0,0.35)',border:`1px solid ${T.border}`,borderBottom:'none'}} onClick={e=>e.stopPropagation()}>
-            <div style={{width:'40px',height:'5px',background:T.border,borderRadius:'3px',margin:'14px auto 18px'}}/>
-            <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
               {/* User card */}
-              <div style={{display:'flex',alignItems:'center',gap:'14px',padding:'16px',background:T.surface2,borderRadius:'18px',marginBottom:'4px',border:`1px solid ${T.border}`}}>
-                <div style={{width:'48px',height:'48px',borderRadius:'16px',background:goldGrad,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.2rem',fontWeight:'800',color:'#000',flexShrink:0,boxShadow:`0 4px 12px ${T.gold}40`}}>{userProfile?.name?.charAt(0)||'?'}</div>
-                <div style={{minWidth:0}}>
-                  <p style={{margin:0,color:T.text,fontWeight:'700',fontSize:'0.95rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{userProfile?.name}</p>
-                  <p style={{margin:'3px 0 0',color:T.textMuted,fontSize:'0.72rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                    <span style={{background:T.gold+'22',color:T.gold,borderRadius:'5px',padding:'1px 6px',fontWeight:'700',fontSize:'0.65rem',marginLeft:'4px'}}>{role==='owner'?'مالك':role==='assistant'?'مساعد':'مشاهد'}</span>
-                    {' '}{userProfile?.email}
-                  </p>
+              <div style={{
+                display:'flex',alignItems:'center',gap:'12px',
+                padding:'14px 16px',
+                background: isDark?'rgba(255,255,255,0.03)':'rgba(0,0,0,0.02)',
+                borderBottom:`1px solid ${T.border}`,
+              }}>
+                <div style={{
+                  width:'40px',height:'40px',borderRadius:'13px',
+                  background:goldGrad,flexShrink:0,
+                  display:'flex',alignItems:'center',justifyContent:'center',
+                  fontSize:'1rem',fontWeight:'800',color:'#000',
+                  boxShadow:`0 3px 10px ${T.gold}40`,
+                }}>{userProfile?.name?.charAt(0)||'?'}</div>
+                <div style={{minWidth:0,flex:1}}>
+                  <p style={{margin:0,color:T.text,fontWeight:'700',fontSize:'0.88rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{userProfile?.name}</p>
+                  <div style={{display:'flex',alignItems:'center',gap:'5px',marginTop:'2px'}}>
+                    <span style={{background:T.gold+'22',color:T.gold,borderRadius:'5px',padding:'1px 6px',fontWeight:'700',fontSize:'0.62rem'}}>
+                      {role==='owner'?'مالك':role==='assistant'?'مساعد':'مشاهد'}
+                    </span>
+                    <span style={{color:T.textMuted,fontSize:'0.7rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{userProfile?.email}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Menu items */}
-              {[
-                {id:'activityLog',icon:Activity,label:t.activityLog,color:T.info},
-                ...(role==='owner'?[{id:'userManagement',icon:Users,label:t.userManagement,color:T.gold}]:[]),
-              ].map(({id,icon:Icon,label,color})=>(
-                <button key={id} onClick={()=>{setActivePage(id);setActiveTab('more');setMoreOpen(false);}} style={{display:'flex',alignItems:'center',gap:'12px',padding:'14px 16px',background:T.surface2,borderRadius:'16px',border:`1px solid ${T.border}`,color:T.text,cursor:'pointer',fontFamily:'inherit',fontSize:'0.9rem',fontWeight:'600',width:'100%',textAlign:lang==='ar'?'right':'left',transition:'all 0.15s'}}>
-                  <div style={{width:'36px',height:'36px',borderRadius:'11px',background:color+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Icon size={17} color={color}/></div>
-                  <span style={{flex:1}}>{label}</span>
-                  <ChevronRight size={15} color={T.textDim} style={{transform:lang==='ar'?'rotate(180deg)':'none'}}/>
-                </button>
-              ))}
+              {/* Nav items */}
+              <div style={{padding:'8px',maxHeight:'65vh',overflowY:'auto'}}>
+                {NAV_ITEMS.map((item,idx)=>{
+                  if(item.id.startsWith('divider')){
+                    return <div key={idx} style={{height:'1px',background:T.border,margin:'4px 0'}}/>;
+                  }
+                  const isActive=item.id===activePage||item.children?.some(c=>c.id===activePage);
+                  const Icon=item.icon;
+                  return(
+                    <div key={item.id}>
+                      {/* Parent item — if has children just shows as label, else navigates */}
+                      <button onClick={()=>{ if(!item.children) navigate(item.id); }}
+                        style={{
+                          display:'flex',alignItems:'center',gap:'10px',
+                          width:'100%',padding:'10px 10px',
+                          borderRadius:'12px',border:'none',
+                          background: isActive&&!item.children ? T.gold+'15' : 'transparent',
+                          cursor: item.children?'default':'pointer',
+                          fontFamily:'inherit',
+                          textAlign:lang==='ar'?'right':'left',
+                        }}>
+                        {Icon&&(
+                          <div style={{
+                            width:'32px',height:'32px',borderRadius:'9px',flexShrink:0,
+                            background: isActive ? (item.color||T.gold)+'20' : T.surface2,
+                            display:'flex',alignItems:'center',justifyContent:'center',
+                            border:`1px solid ${isActive?(item.color||T.gold)+'30':T.border}`,
+                          }}>
+                            <Icon size={15} color={isActive?(item.color||T.gold):T.textMuted}/>
+                          </div>
+                        )}
+                        <span style={{
+                          flex:1,fontSize:'0.88rem',
+                          fontWeight: isActive?'700':'500',
+                          color: isActive?(item.color||T.gold):T.text,
+                        }}>{item.label}</span>
+                        {isActive&&!item.children&&(
+                          <div style={{width:'6px',height:'6px',borderRadius:'50%',background:item.color||T.gold,flexShrink:0}}/>
+                        )}
+                      </button>
 
-              {/* Sign out */}
-              <button onClick={handleSignOut} style={{display:'flex',alignItems:'center',gap:'12px',padding:'14px 16px',background:T.danger+'0d',borderRadius:'16px',border:`1px solid ${T.danger}22`,color:T.danger,cursor:'pointer',fontFamily:'inherit',fontSize:'0.9rem',fontWeight:'700',width:'100%',marginTop:'2px'}}>
-                <div style={{width:'36px',height:'36px',borderRadius:'11px',background:T.danger+'18',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><LogOut size={17} color={T.danger}/></div>
-                {lang==='ar'?'تسجيل الخروج':'Sign Out'}
-              </button>
+                      {/* Children — always visible, indented */}
+                      {item.children&&(
+                        <div style={{marginBottom:'4px'}}>
+                          {item.children.map(child=>{
+                            const childActive=child.id===activePage;
+                            const CIcon=child.icon;
+                            return(
+                              <button key={child.id} onClick={()=>navigate(child.id)} style={{
+                                display:'flex',alignItems:'center',gap:'8px',
+                                width:'100%',
+                                padding:'8px 10px 8px 20px',
+                                borderRadius:'10px',border:'none',
+                                background: childActive ? T.gold+'12' : 'transparent',
+                                cursor:'pointer',fontFamily:'inherit',
+                                textAlign:lang==='ar'?'right':'left',
+                              }}>
+                                <div style={{
+                                  width:'6px',height:'6px',borderRadius:'50%',flexShrink:0,
+                                  background: childActive ? T.gold : T.border,
+                                  transition:'background 0.15s',
+                                }}/>
+                                <CIcon size={13} color={childActive?T.gold:T.textMuted}/>
+                                <span style={{
+                                  fontSize:'0.82rem',
+                                  fontWeight:childActive?'700':'400',
+                                  color:childActive?T.gold:T.textMuted,
+                                }}>{child.label}</span>
+                                {childActive&&(
+                                  <div style={{marginRight:'auto',marginLeft:'auto'}}/>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Divider before sign out */}
+                <div style={{height:'1px',background:T.border,margin:'4px 0'}}/>
+
+                {/* Sign out */}
+                <button onClick={handleSignOut} style={{
+                  display:'flex',alignItems:'center',gap:'10px',
+                  width:'100%',padding:'10px 10px',borderRadius:'12px',border:'none',
+                  background:'transparent',cursor:'pointer',fontFamily:'inherit',
+                  textAlign:lang==='ar'?'right':'left',
+                }}>
+                  <div style={{
+                    width:'32px',height:'32px',borderRadius:'9px',flexShrink:0,
+                    background:T.danger+'18',
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    border:`1px solid ${T.danger}25`,
+                  }}>
+                    <LogOut size={15} color={T.danger}/>
+                  </div>
+                  <span style={{fontSize:'0.88rem',fontWeight:'600',color:T.danger}}>
+                    {lang==='ar'?'تسجيل الخروج':'Sign Out'}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
+
+      {/* ── CONTENT ── */}
+      <main style={{padding:'14px',paddingBottom:'32px',maxWidth:'600px',margin:'0 auto',boxSizing:'border-box'}}>
+        {renderPage()}
+      </main>
     </div>
   );
 }
