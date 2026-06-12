@@ -1251,6 +1251,7 @@ export default function App(){
   const [activePage,setActivePage]=useState('dashboard');
   const [assetSub,setAssetSub]=useState('realEstate');
   const [opSub,setOpSub]=useState('operations');
+  const [blockedReason,setBlockedReason]=useState(null); // 'inactive' | 'unauthorized'
   const [moreOpen,setMoreOpen]=useState(false);
   const [data,setData]=useState(null);
   const [loading,setLoading]=useState(true);
@@ -1263,14 +1264,32 @@ export default function App(){
 
   useEffect(()=>{
     const unsub=onAuthStateChanged(auth,async fbUser=>{
-      setAuthUser(fbUser);
       if(fbUser){
         try{
           const snap=await getDoc(doc(db,'users',fbUser.uid));
-          if(snap.exists()){setUserProfile({uid:fbUser.uid,...snap.data()});}
-          else{const profile={name:fbUser.email.split('@')[0],email:fbUser.email,role:'owner',status:'active'};await setDoc(doc(db,'users',fbUser.uid),profile);setUserProfile({uid:fbUser.uid,...profile});}
+          if(snap.exists()){
+            const profile={uid:fbUser.uid,...snap.data()};
+            // ── Security: block deactivated accounts ──
+            if(profile.status==='inactive'){
+              await signOut(auth);
+              setBlockedReason('inactive');
+              setAuthUser(null);setUserProfile(null);setData(null);
+              setAuthLoading(false);
+              return;
+            }
+            setBlockedReason(null);
+            setUserProfile(profile);
+            setAuthUser(fbUser);
+          } else {
+            // ── Security: unknown user (not created by owner) → deny access ──
+            await signOut(auth);
+            setBlockedReason('unauthorized');
+            setAuthUser(null);setUserProfile(null);setData(null);
+            setAuthLoading(false);
+            return;
+          }
         }catch(e){console.error(e);}
-      }else{setUserProfile(null);setData(null);}
+      }else{setUserProfile(null);setData(null);setAuthUser(null);}
       setAuthLoading(false);
     });
     return unsub;
@@ -1313,6 +1332,30 @@ export default function App(){
   const spinner=msg=>(<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:T.bg,fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif'}}><div style={{textAlign:'center'}}><div style={{width:'52px',height:'52px',background:`linear-gradient(135deg,${T.goldDark},${T.gold})`,borderRadius:'16px',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px',boxShadow:`0 8px 24px ${T.gold}40`}}><div style={{width:'24px',height:'24px',border:'3px solid rgba(255,255,255,0.3)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/></div><p style={{color:T.textMuted,fontSize:'0.82rem',margin:0,fontWeight:'500'}}>{msg}</p></div><style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style></div>);
 
   if(authLoading)return spinner(lang==='ar'?'جاري التحقق...':'Authenticating...');
+
+  // ── Blocked screen ──
+  if(blockedReason){
+    const isInactive=blockedReason==='inactive';
+    return(
+      <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(160deg,#0a0f1e 0%,#0d1f3c 100%)',padding:'1.5rem',fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif',direction:'rtl'}}>
+        <div style={{textAlign:'center',maxWidth:'320px'}}>
+          <div style={{width:'72px',height:'72px',borderRadius:'22px',background:isInactive?'rgba(255,69,58,0.15)':'rgba(255,159,10,0.15)',border:`1px solid ${isInactive?'rgba(255,69,58,0.3)':'rgba(255,159,10,0.3)'}`,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px',fontSize:'2rem'}}>
+            {isInactive?'🔒':'⛔'}
+          </div>
+          <h2 style={{color:'#fff',fontWeight:'800',fontSize:'1.2rem',margin:'0 0 10px'}}>
+            {isInactive?'تم تعطيل حسابك':'غير مصرح لك بالدخول'}
+          </h2>
+          <p style={{color:'rgba(255,255,255,0.5)',fontSize:'0.85rem',lineHeight:'1.6',margin:'0 0 24px'}}>
+            {isInactive?'حسابك موجود لكنه معطّل حالياً. تواصل مع مالك النظام لإعادة تفعيله.':'هذا الحساب غير مسجّل في النظام. تواصل مع مالك النظام لإضافتك.'}
+          </p>
+          <button onClick={()=>setBlockedReason(null)} style={{padding:'12px 28px',borderRadius:'14px',border:'none',background:'linear-gradient(135deg,#8a6520,#c9a84c)',color:'#fff',fontWeight:'700',fontSize:'0.9rem',cursor:'pointer',fontFamily:'inherit'}}>
+            العودة لتسجيل الدخول
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if(!authUser)return <Login/>;
   if(loading||!data)return spinner(lang==='ar'?'جاري التحميل...':'Loading...');
 
