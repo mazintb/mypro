@@ -154,8 +154,10 @@ const TR = {
 
 const genId=()=>`${Date.now()}_${Math.random().toString(36).substr(2,6)}`;
 const todayStr=()=>new Date().toISOString().split('T')[0];
-const daysUntil=d=>d?Math.ceil((new Date(d)-new Date())/86400000):null;
-const fmt=n=>Math.round(n||0).toLocaleString('ar-SA');
+const daysUntil=d=>{if(!d)return null;const dt=new Date(d);if(isNaN(dt.getTime()))return null;return Math.ceil((dt-new Date())/86400000);};
+// Safe numeric coercion — strings, '', null, NaN all collapse to 0 so reduces never concatenate or produce NaN
+const num=v=>{const n=typeof v==='number'?v:parseFloat(v);return Number.isFinite(n)?n:0;};
+const fmt=n=>Math.round(num(n)).toLocaleString('ar-SA');
 const fmtC=(n,lang)=>`${fmt(n)} ${lang==='ar'?'ريال':'SAR'}`;
 let DATE_CAL='gregory';   // 'gregory' | 'hijri' — set from App settings during render
 const fmtDate=(d,lang)=>{
@@ -466,18 +468,18 @@ function SubTabs({tabs,active,onChange,T}){
 // ═══ DASHBOARD ═══
 function Dashboard({data,lang,t,T}){
   const re=data.realEstate||[],co=data.companies||[],ve=data.vehicles||[],iv=data.investments||[],tr=data.transactions||[];
-  const totalAssets=re.reduce((s,p)=>s+p.value,0)+co.reduce((s,c)=>s+c.capital,0)+ve.reduce((s,v)=>s+v.value,0)+iv.reduce((s,i)=>s+i.currentValue,0);
+  const totalAssets=re.reduce((s,p)=>s+num(p.value),0)+co.reduce((s,c)=>s+num(c.capital),0)+ve.reduce((s,v)=>s+num(v.value),0)+iv.reduce((s,i)=>s+num(i.currentValue),0);
 
   // Monthly income: sum from active companies + normalized rent from properties
-  const rentNormalize=(amt,freq)=>{if(!amt)return 0;if(freq==='monthly')return amt;if(freq==='quarterly')return amt/3;if(freq==='yearly')return amt/12;return amt/12;};
-  const rentIncome=re.reduce((s,p)=>{if(p.hasUnits)return s+p.units.filter(u=>u.status==='occupied').reduce((su,u)=>su+rentNormalize(u.rent?.amount,u.rent?.frequency),0);if(p.status==='occupied')return s+rentNormalize(p.rent?.amount,p.rent?.frequency);return s;},0);
-  const companyIncome=co.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+c.monthlyRevenue,0);
+  const rentNormalize=(amt,freq)=>{const a=num(amt);if(!a)return 0;if(freq==='quarterly')return a/3;if(freq==='yearly')return a/12;return a;};
+  const rentIncome=re.reduce((s,p)=>{if(p.hasUnits)return s+(p.units||[]).filter(u=>u.status==='occupied').reduce((su,u)=>su+rentNormalize(u.rent?.amount,u.rent?.frequency),0);if(p.status==='occupied')return s+rentNormalize(p.rent?.amount,p.rent?.frequency);return s;},0);
+  const companyIncome=co.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+num(c.monthlyRevenue),0);
   const mInc=rentIncome+companyIncome;
 
   // Monthly expenses: company costs + vehicle installments + recurring operations
-  const companyExp=co.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+c.monthlyExpense,0);
-  const loanExp=ve.reduce((s,v)=>s+(v.loan?.monthlyInstallment||0),0);
-  const recurringOps=(data.operations||[]).filter(o=>o.frequency==='monthly'&&o.status!=='paid').reduce((s,o)=>s+o.amount,0);
+  const companyExp=co.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+num(c.monthlyExpense),0);
+  const loanExp=ve.reduce((s,v)=>s+num(v.loan?.monthlyInstallment),0);
+  const recurringOps=(data.operations||[]).filter(o=>o.frequency==='monthly'&&o.status!=='paid').reduce((s,o)=>s+num(o.amount),0);
   const mExp=companyExp+loanExp+recurringOps;
   const alerts=[];
   re.forEach(p=>{
@@ -507,10 +509,12 @@ function Dashboard({data,lang,t,T}){
   // Aggregated installment liabilities (vehicles + installment-type operations)
   const vehLoans=ve.map(v=>loanSummary(v.loan)).filter(L=>L.hasLoan);
   const opInst=(data.operations||[]).filter(o=>o.type==='installment');
-  const liabMonthly=vehLoans.reduce((s,L)=>s+L.inst,0)+opInst.filter(o=>o.frequency==='monthly').reduce((s,o)=>s+o.amount,0);
-  const liabRemaining=vehLoans.reduce((s,L)=>s+L.remainingAmount,0)+opInst.reduce((s,o)=>s+(o.remainingMonths||0)*o.amount,0);
+  const liabMonthly=vehLoans.reduce((s,L)=>s+L.inst,0)+opInst.filter(o=>o.frequency==='monthly').reduce((s,o)=>s+num(o.amount),0);
+  const liabRemaining=vehLoans.reduce((s,L)=>s+L.remainingAmount,0)+opInst.reduce((s,o)=>s+num(o.remainingMonths)*num(o.amount),0);
   const liabCount=vehLoans.length+opInst.length;
-  const pieData=[{name:lang==='ar'?'عقارات':'Real Estate',value:re.reduce((s,p)=>s+p.value,0)},{name:lang==='ar'?'شركات':'Companies',value:co.reduce((s,c)=>s+c.capital,0)},{name:lang==='ar'?'مركبات':'Vehicles',value:ve.reduce((s,v)=>s+v.value,0)},{name:lang==='ar'?'استثمارات':'Investments',value:iv.reduce((s,i)=>s+i.currentValue,0)}].filter(d=>d.value>0);
+  // True net worth = assets minus outstanding obligations
+  const netWorth=totalAssets-liabRemaining;
+  const pieData=[{name:lang==='ar'?'عقارات':'Real Estate',value:re.reduce((s,p)=>s+num(p.value),0)},{name:lang==='ar'?'شركات':'Companies',value:co.reduce((s,c)=>s+num(c.capital),0)},{name:lang==='ar'?'مركبات':'Vehicles',value:ve.reduce((s,v)=>s+num(v.value),0)},{name:lang==='ar'?'استثمارات':'Investments',value:iv.reduce((s,i)=>s+num(i.currentValue),0)}].filter(d=>d.value>0);
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
       {/* Hero */}
@@ -528,8 +532,14 @@ function Dashboard({data,lang,t,T}){
             <div style={{position:'absolute',top:'-30%',right:'-10%',width:'180px',height:'180px',borderRadius:'50%',background:'rgba(255,255,255,0.08)',pointerEvents:'none'}}/>
             <div style={{position:'absolute',bottom:'-20%',left:'-5%',width:'120px',height:'120px',borderRadius:'50%',background:'rgba(255,255,255,0.06)',pointerEvents:'none'}}/>
             <p style={{color:'rgba(255,255,255,0.75)',fontSize:'0.72rem',margin:'0 0 6px',fontWeight:'700',letterSpacing:'0.8px',textTransform:'uppercase'}}>{t.netWorth}</p>
-            <p style={{color:'#fff',fontSize:'2.5rem',fontWeight:'900',margin:'0 0 2px',letterSpacing:'-1.5px',textShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>{fmt(totalAssets)}</p>
+            <p style={{color:'#fff',fontSize:'2.5rem',fontWeight:'900',margin:'0 0 2px',letterSpacing:'-1.5px',textShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>{fmt(netWorth)}</p>
             <p style={{color:'rgba(255,255,255,0.6)',fontSize:'0.72rem',margin:'0 0 10px',fontWeight:'500'}}>{lang==='ar'?'ريال سعودي':'Saudi Riyal'}</p>
+            {liabRemaining>0&&(
+              <div style={{display:'flex',justifyContent:'center',gap:'14px',margin:'0 0 12px',flexWrap:'wrap'}}>
+                <span style={{color:'rgba(255,255,255,0.88)',fontSize:'0.7rem',fontWeight:'600'}}>{t.totalAssets}: <strong>{fmt(totalAssets)}</strong></span>
+                <span style={{color:'rgba(255,255,255,0.88)',fontSize:'0.7rem',fontWeight:'600'}}>− {t.liabilities}: <strong>{fmt(liabRemaining)}</strong></span>
+              </div>
+            )}
             {/* Asset Summary Pills */}
             {(re.length+co.length+ve.length+iv.length)>0&&(
               <div style={{display:'flex',flexWrap:'wrap',justifyContent:'center',gap:'6px',marginBottom:'14px'}}>
@@ -1047,10 +1057,33 @@ function OperationsPage({data,setData,lang,t,T,logActivity,currentUser,canDelete
   const openAdd=()=>{setForm({date:todayStr(),type:'',description:'',amount:'',frequency:'once',nextDue:'',linkedName:'',status:'pending'});setErrors({});setModal(true);};
   const save=()=>{const errs=validate([['type',form.type],['description',form.description],['amount',form.amount]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:genId(),amount:Number(form.amount)||0,addedBy:currentUser?.name||'?'};setData(d=>({...d,operations:[entry,...(d.operations||[])]}));logActivity(t.addedAction,t.operations,`${ot[form.type]}: ${form.description}`);setModal(false);};
   const [paidFlash,setPaidFlash]=useState(null);
-  const markPaid=id=>{setData(d=>({...d,operations:d.operations.map(o=>o.id===id?{...o,status:'paid'}:o)}));setPaidFlash(id);setTimeout(()=>setPaidFlash(null),1800);};
+  const markPaid=id=>{
+    setData(d=>{
+      const op=(d.operations||[]).find(o=>o.id===id);
+      if(!op)return d;
+      const amt=num(op.amount);
+      // Post a real cash-flow entry so the ledger and dashboard reflect what was actually paid
+      const expenseEntry={id:genId(),date:todayStr(),amount:amt,category:ot[op.type]||op.type,description:op.description,linkedName:op.linkedName||'',addedBy:currentUser?.name||'?',source:'operation'};
+      const isInstallment=op.type==='installment'&&num(op.remainingMonths)>0;
+      const operations=(d.operations||[]).map(o=>{
+        if(o.id!==id)return o;
+        if(isInstallment){
+          const rem=num(o.remainingMonths)-1;
+          // advance the due date by one billing period
+          let nd=o.nextDue?new Date(o.nextDue):null;
+          if(nd&&!isNaN(nd.getTime())){const step=o.frequency==='quarterly'?3:o.frequency==='yearly'?12:1;nd.setMonth(nd.getMonth()+step);}
+          return{...o,remainingMonths:Math.max(0,rem),nextDue:nd?nd.toISOString().split('T')[0]:o.nextDue,status:rem<=0?'paid':'pending'};
+        }
+        return{...o,status:'paid'};
+      });
+      return{...d,operations,expenses:[expenseEntry,...(d.expenses||[])]};
+    });
+    setPaidFlash(id);setTimeout(()=>setPaidFlash(null),1800);
+    logActivity(t.paidAction,t.operations,fmtC(num((items.find(o=>o.id===id)||{}).amount),lang));
+  };
   const del=id=>{setData(d=>({...d,operations:d.operations.filter(o=>o.id!==id)}));setConfirm(null);};
   const filtered=items.filter(o=>(typeF==='all'||o.type===typeF)&&(statusF==='all'||o.status===statusF));
-  const pending=items.filter(o=>o.status==='pending').reduce((s,o)=>s+o.amount,0);
+  const pending=items.filter(o=>o.status==='pending').reduce((s,o)=>s+num(o.amount),0);
   const sColor={paid:T.success,pending:T.warning,overdue:T.danger};
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
@@ -1358,7 +1391,9 @@ export default function App(){
   const [authUser,setAuthUser]=useState(null);
   const [userProfile,setUserProfile]=useState(null);
   const [authLoading,setAuthLoading]=useState(true);
+  const [saveStatus,setSaveStatus]=useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
   const saveTimer=useRef(null);
+  const savedTimer=useRef(null);
   const t=TR[lang];
   const T=isDark?DARK:LIGHT;
   DATE_CAL=cal;   // applied synchronously before children render
@@ -1411,7 +1446,13 @@ export default function App(){
   useEffect(()=>{
     if(!authUser||loading||!data)return;
     clearTimeout(saveTimer.current);
-    saveTimer.current=setTimeout(()=>{setDoc(doc(db,'platform','main'),data).catch(console.error);},2000);
+    setSaveStatus('saving');
+    saveTimer.current=setTimeout(()=>{
+      const payload={...data,updatedAt:new Date().toISOString(),updatedBy:userProfile?.name||'?'};
+      setDoc(doc(db,'platform','main'),payload)
+        .then(()=>{setSaveStatus('saved');clearTimeout(savedTimer.current);savedTimer.current=setTimeout(()=>setSaveStatus('idle'),2200);})
+        .catch(e=>{console.error(e);setSaveStatus('error');});
+    },2000);
     return()=>clearTimeout(saveTimer.current);
   },[data,authUser,loading]);
 
@@ -1527,6 +1568,7 @@ export default function App(){
         @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
         @keyframes dropDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
         input[type=date]::-webkit-calendar-picker-indicator{filter:${isDark?'invert(0.7)':'none'}}
         select option{background:${T.surface};color:${T.text}}
         @media print{header,footer{display:none!important}}
@@ -1563,6 +1605,18 @@ export default function App(){
 
         {/* Right controls */}
         <div style={{display:'flex',alignItems:'center',gap:'6px',flexShrink:0}}>
+          {saveStatus!=='idle'&&(
+            <span title={saveStatus} style={{
+              display:'flex',alignItems:'center',gap:'4px',padding:'5px 8px',borderRadius:'9px',
+              fontSize:'0.66rem',fontWeight:'700',
+              background:(saveStatus==='error'?T.danger:saveStatus==='saved'?T.success:T.textMuted)+'18',
+              color:saveStatus==='error'?T.danger:saveStatus==='saved'?T.success:T.textMuted,
+            }}>
+              <span style={{width:'6px',height:'6px',borderRadius:'50%',background:'currentColor',
+                animation:saveStatus==='saving'?'pulse 1s ease-in-out infinite':'none'}}/>
+              {saveStatus==='saving'?(lang==='ar'?'حفظ…':'Saving…'):saveStatus==='saved'?(lang==='ar'?'محفوظ':'Saved'):(lang==='ar'?'فشل':'Failed')}
+            </span>
+          )}
           {alertCount>0&&(
             <button onClick={()=>{navigate('dashboard');}} style={{
               background:T.danger+'18',border:`1px solid ${T.danger}33`,
