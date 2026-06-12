@@ -218,7 +218,7 @@ function Field({label,children,error,T}){
     </div>
   );
 }
-function Inp({value,onChange,type='text',placeholder='',T,error}){
+function Inp({value,onChange,type='text',placeholder='',T=DARK,error}){
   const [focused,setFocused]=useState(false);
   return(
     <>
@@ -237,7 +237,7 @@ function Inp({value,onChange,type='text',placeholder='',T,error}){
     </>
   );
 }
-function Sel({value,onChange,children,T}){
+function Sel({value,onChange,children,T=DARK}){
   const [focused,setFocused]=useState(false);
   return(
     <select value={value||''} onChange={onChange}
@@ -254,7 +254,7 @@ function Sel({value,onChange,children,T}){
     </select>
   );
 }
-function Ta({value,onChange,rows=2,T}){
+function Ta({value,onChange,rows=2,T=DARK}){
   const [focused,setFocused]=useState(false);
   return(
     <textarea value={value||''} onChange={onChange} rows={rows}

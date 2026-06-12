@@ -1,25 +1,16 @@
 import { useState, useEffect } from 'react';
-import { initializeApp, getApps, deleteApp } from 'firebase/app';
+import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { auth, db, firebaseConfig } from './firebase';
 import { Users, Plus, Shield, Eye, Trash2, CheckCircle2, XCircle, AlertCircle,
          RefreshCw, Crown, UserCheck, Mail, Lock, ChevronDown, Key } from 'lucide-react';
 
-/* ─── Firebase config (same project, secondary app instance for creating users) ─── */
-const FB_CONFIG = {
-  apiKey: "AIzaSyCKvJIqxq8u_nVouPgSrRS6R5ca25SRGX0",
-  authDomain: "mypro-d522e.firebaseapp.com",
-  projectId: "mypro-d522e",
-  storageBucket: "mypro-d522e.firebasestorage.app",
-  messagingSenderId: "997512009251",
-  appId: "1:997512009251:web:b972d91d1d11cf64d44396"
-};
-
-/* Creates a user in Firebase Auth without affecting the current session */
+/* Creates a user in Firebase Auth without affecting the current session
+   (uses a secondary app instance of the same project) */
 async function createUserSafely(email, password) {
   const appName = `secondary-${Date.now()}`;
-  const secondaryApp = initializeApp(FB_CONFIG, appName);
+  const secondaryApp = initializeApp(firebaseConfig, appName);
   const secondaryAuth = getAuth(secondaryApp);
   try {
     const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
