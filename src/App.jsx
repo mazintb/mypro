@@ -713,18 +713,18 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete}){
         {!form.hasUnits&&form.status==='occupied'&&<>
           <SectionHeader title={t.tenant} T={T}/>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-            <Field label={t.name}><Inp value={form.tenant?.name} onChange={e=>setForm(f=>({...f,tenant:{...f.tenant,name:e.target.value}}))}/></Field>
-            <Field label={t.phone}><Inp value={form.tenant?.phone} onChange={e=>setForm(f=>({...f,tenant:{...f.tenant,phone:e.target.value}}))}/></Field>
+            <Field label={t.name} T={T}><Inp value={form.tenant?.name} onChange={e=>setForm(f=>({...f,tenant:{...f.tenant,name:e.target.value}})) } T={T}/></Field>
+            <Field label={t.phone} T={T}><Inp value={form.tenant?.phone} onChange={e=>setForm(f=>({...f,tenant:{...f.tenant,phone:e.target.value}})) } T={T}/></Field>
           </div>
           <SectionHeader title={t.rent} T={T}/>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px'}}>
-            <Field label={t.amount}><Inp type="number" value={form.rent?.amount} onChange={e=>setForm(f=>({...f,rent:{...f.rent,amount:e.target.value}}))}/></Field>
-            <Field label={t.frequency}><Sel value={form.rent?.frequency} onChange={e=>setForm(f=>({...f,rent:{...f.rent,frequency:e.target.value}}))}>  {Object.entries(ft).map(([k,v])=><option key={k} value={k}>{v}</option>)}</Sel></Field>
-            <Field label={t.nextDue}><Inp type="date" value={form.rent?.nextDue} onChange={e=>setForm(f=>({...f,rent:{...f.rent,nextDue:e.target.value}}))}/></Field>
+            <Field label={t.amount} T={T}><Inp type="number" value={form.rent?.amount} onChange={e=>setForm(f=>({...f,rent:{...f.rent,amount:e.target.value}})) } T={T}/></Field>
+            <Field label={t.frequency} T={T}><Sel value={form.rent?.frequency} onChange={e=>setForm(f=>({...f,rent:{...f.rent,frequency:e.target.value}})) } T={T}>{Object.entries(ft).map(([k,v])=><option key={k} value={k}>{v}</option>)}</Sel></Field>
+            <Field label={t.nextDue} T={T}><Inp type="date" value={form.rent?.nextDue} onChange={e=>setForm(f=>({...f,rent:{...f.rent,nextDue:e.target.value}})) } T={T}/></Field>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-            <Field label={t.startDate}><Inp type="date" value={form.contract?.startDate} onChange={e=>setForm(f=>({...f,contract:{...f.contract,startDate:e.target.value}}))}/></Field>
-            <Field label={t.endDate}><Inp type="date" value={form.contract?.endDate} onChange={e=>setForm(f=>({...f,contract:{...f.contract,endDate:e.target.value}}))}/></Field>
+            <Field label={t.startDate} T={T}><Inp type="date" value={form.contract?.startDate} onChange={e=>setForm(f=>({...f,contract:{...f.contract,startDate:e.target.value}})) } T={T}/></Field>
+            <Field label={t.endDate} T={T}><Inp type="date" value={form.contract?.endDate} onChange={e=>setForm(f=>({...f,contract:{...f.contract,endDate:e.target.value}})) } T={T}/></Field>
           </div>
         </>}
         <Field label={t.notes}><Ta value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} T={T}/></Field>
@@ -747,17 +747,17 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete}){
         {unitForm.status==='occupied'&&<>
           <SectionHeader title={t.tenant} T={T}/>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-            <Field label={t.name}><Inp value={unitForm.tenant?.name} onChange={e=>setUnitForm(f=>({...f,tenant:{...f.tenant,name:e.target.value}}))}/></Field>
-            <Field label={t.phone}><Inp value={unitForm.tenant?.phone} onChange={e=>setUnitForm(f=>({...f,tenant:{...f.tenant,phone:e.target.value}}))}/></Field>
+            <Field label={t.name} T={T}><Inp value={unitForm.tenant?.name} onChange={e=>setUnitForm(f=>({...f,tenant:{...f.tenant,name:e.target.value}})) } T={T}/></Field>
+            <Field label={t.phone} T={T}><Inp value={unitForm.tenant?.phone} onChange={e=>setUnitForm(f=>({...f,tenant:{...f.tenant,phone:e.target.value}})) } T={T}/></Field>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px'}}>
-            <Field label={t.amount}><Inp type="number" value={unitForm.rent?.amount} onChange={e=>setUnitForm(f=>({...f,rent:{...f.rent,amount:e.target.value}}))}/></Field>
-            <Field label={t.frequency}><Sel value={unitForm.rent?.frequency} onChange={e=>setUnitForm(f=>({...f,rent:{...f.rent,frequency:e.target.value}}))}>  {Object.entries(ft).map(([k,v])=><option key={k} value={k}>{v}</option>)}</Sel></Field>
-            <Field label={t.nextDue}><Inp type="date" value={unitForm.rent?.nextDue} onChange={e=>setUnitForm(f=>({...f,rent:{...f.rent,nextDue:e.target.value}}))}/></Field>
+            <Field label={t.amount} T={T}><Inp type="number" value={unitForm.rent?.amount} onChange={e=>setUnitForm(f=>({...f,rent:{...f.rent,amount:e.target.value}})) } T={T}/></Field>
+            <Field label={t.frequency} T={T}><Sel value={unitForm.rent?.frequency} onChange={e=>setUnitForm(f=>({...f,rent:{...f.rent,frequency:e.target.value}})) } T={T}>{Object.entries(ft).map(([k,v])=><option key={k} value={k}>{v}</option>)}</Sel></Field>
+            <Field label={t.nextDue} T={T}><Inp type="date" value={unitForm.rent?.nextDue} onChange={e=>setUnitForm(f=>({...f,rent:{...f.rent,nextDue:e.target.value}})) } T={T}/></Field>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-            <Field label={t.startDate}><Inp type="date" value={unitForm.contract?.startDate} onChange={e=>setUnitForm(f=>({...f,contract:{...f.contract,startDate:e.target.value}}))}/></Field>
-            <Field label={t.endDate}><Inp type="date" value={unitForm.contract?.endDate} onChange={e=>setUnitForm(f=>({...f,contract:{...f.contract,endDate:e.target.value}}))}/></Field>
+            <Field label={t.startDate} T={T}><Inp type="date" value={unitForm.contract?.startDate} onChange={e=>setUnitForm(f=>({...f,contract:{...f.contract,startDate:e.target.value}})) } T={T}/></Field>
+            <Field label={t.endDate} T={T}><Inp type="date" value={unitForm.contract?.endDate} onChange={e=>setUnitForm(f=>({...f,contract:{...f.contract,endDate:e.target.value}})) } T={T}/></Field>
           </div>
         </>}
         <SaveBtn onClick={saveUnit} label={t.save} T={T}/>
@@ -853,21 +853,21 @@ function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete}){
         </div>
         <SectionHeader title={`🛡️ ${t.insurance}`} T={T}/>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'10px'}}>
-          <Field label={lang==='ar'?'الشركة':'Company'}><Inp value={form.insurance?.company} onChange={e=>setForm(f=>({...f,insurance:{...f.insurance,company:e.target.value}}))}/></Field>
-          <Field label={t.insExpiry}><Inp type="date" value={form.insurance?.expiryDate} onChange={e=>setForm(f=>({...f,insurance:{...f.insurance,expiryDate:e.target.value}}))}/></Field>
-          <Field label={lang==='ar'?'القسط':'Premium'}><Inp type="number" value={form.insurance?.amount} onChange={e=>setForm(f=>({...f,insurance:{...f.insurance,amount:e.target.value}}))}/></Field>
+          <Field label={lang==='ar'?'الشركة':'Company'} T={T}><Inp value={form.insurance?.company} onChange={e=>setForm(f=>({...f,insurance:{...f.insurance,company:e.target.value}})) } T={T}/></Field>
+          <Field label={t.insExpiry} T={T}><Inp type="date" value={form.insurance?.expiryDate} onChange={e=>setForm(f=>({...f,insurance:{...f.insurance,expiryDate:e.target.value}})) } T={T}/></Field>
+          <Field label={lang==='ar'?'القسط':'Premium'} T={T}><Inp type="number" value={form.insurance?.amount} onChange={e=>setForm(f=>({...f,insurance:{...f.insurance,amount:e.target.value}})) } T={T}/></Field>
         </div>
         <SectionHeader title={`📋 ${t.registration}`} T={T}/>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-          <Field label={t.regExpiry}><Inp type="date" value={form.registration?.expiryDate} onChange={e=>setForm(f=>({...f,registration:{...f.registration,expiryDate:e.target.value}}))}/></Field>
-          <Field label={lang==='ar'?'الرسوم':'Fee'}><Inp type="number" value={form.registration?.amount} onChange={e=>setForm(f=>({...f,registration:{...f.registration,amount:e.target.value}}))}/></Field>
+          <Field label={t.regExpiry} T={T}><Inp type="date" value={form.registration?.expiryDate} onChange={e=>setForm(f=>({...f,registration:{...f.registration,expiryDate:e.target.value}})) } T={T}/></Field>
+          <Field label={lang==='ar'?'الرسوم':'Fee'} T={T}><Inp type="number" value={form.registration?.amount} onChange={e=>setForm(f=>({...f,registration:{...f.registration,amount:e.target.value}})) } T={T}/></Field>
         </div>
         <SectionHeader title={`💳 ${t.installment} (${lang==='ar'?'اتركه فارغاً إن لا يوجد':'leave empty if none'})`} T={T}/>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-          <Field label={t.loanAmount}><Inp type="number" value={form.loan?.amount} onChange={e=>setForm(f=>({...f,loan:{...f.loan,amount:e.target.value}}))}/></Field>
-          <Field label={t.installment}><Inp type="number" value={form.loan?.monthlyInstallment} onChange={e=>setForm(f=>({...f,loan:{...f.loan,monthlyInstallment:e.target.value}}))}/></Field>
-          <Field label={t.nextDue}><Inp type="date" value={form.loan?.nextDue} onChange={e=>setForm(f=>({...f,loan:{...f.loan,nextDue:e.target.value}}))}/></Field>
-          <Field label={t.remainingMonths}><Inp type="number" value={form.loan?.remainingMonths} onChange={e=>setForm(f=>({...f,loan:{...f.loan,remainingMonths:e.target.value}}))}/></Field>
+          <Field label={t.loanAmount} T={T}><Inp type="number" value={form.loan?.amount} onChange={e=>setForm(f=>({...f,loan:{...f.loan,amount:e.target.value}})) } T={T}/></Field>
+          <Field label={t.installment} T={T}><Inp type="number" value={form.loan?.monthlyInstallment} onChange={e=>setForm(f=>({...f,loan:{...f.loan,monthlyInstallment:e.target.value}})) } T={T}/></Field>
+          <Field label={t.nextDue} T={T}><Inp type="date" value={form.loan?.nextDue} onChange={e=>setForm(f=>({...f,loan:{...f.loan,nextDue:e.target.value}})) } T={T}/></Field>
+          <Field label={t.remainingMonths} T={T}><Inp type="number" value={form.loan?.remainingMonths} onChange={e=>setForm(f=>({...f,loan:{...f.loan,remainingMonths:e.target.value}})) } T={T}/></Field>
         </div>
         <Field label={t.notes}><Ta value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} T={T}/></Field>
         <SaveBtn onClick={save} label={t.save} T={T}/><CancelBtn onClick={()=>setModal(null)} label={t.cancel} T={T}/>
