@@ -91,6 +91,7 @@ const TR = {
     investmentType:'نوع الاستثمار', purchaseDate:'تاريخ الشراء', all:'الكل',
     activeCompany:'شركة حيّة', underConstruction:'قيد الإنشاء',
     fieldRequired:'هذا الحقل إلزامي', selectType:'اختر النوع...',
+    invalidNumber:'أدخل رقماً صالحاً', mustBePositive:'يجب أن يكون أكبر من صفر', endBeforeStart:'تاريخ النهاية قبل البداية',
     selectStatus:'اختر الحالة...', once:'مرة واحدة',
     monthly:'شهري', quarterly:'ربع سنوي', yearly:'سنوي',
     linkedName:'اسم الأصل المرتبط',
@@ -146,6 +147,7 @@ const TR = {
     investmentType:'Investment Type', purchaseDate:'Purchase Date', all:'All',
     activeCompany:'Active', underConstruction:'Under Construction',
     fieldRequired:'This field is required', selectType:'Select type...',
+    invalidNumber:'Enter a valid number', mustBePositive:'Must be greater than zero', endBeforeStart:'End date is before start date',
     selectStatus:'Select status...', once:'Once',
     monthly:'Monthly', quarterly:'Quarterly', yearly:'Yearly',
     linkedName:'Asset Name',
@@ -424,10 +426,29 @@ function EmptyState({icon,title,subtitle,T}){
 }
 
 // validate helper
+// Each rule: [key, val] (required text) OR [key, val, opts]
+// opts: { required, number, positive(>0), nonNegative(>=0), optional }
 function validate(fields,t){
   const errors={};
-  fields.forEach(([key,val])=>{ if(!val||String(val).trim()==='')errors[key]=t.fieldRequired; });
+  fields.forEach(([key,val,opts])=>{
+    const o=opts||{};
+    const empty=val===undefined||val===null||String(val).trim()==='';
+    if(empty){ if(o.optional!==true) errors[key]=t.fieldRequired; return; }
+    if(o.number||o.positive||o.nonNegative){
+      const n=parseFloat(val);
+      if(!Number.isFinite(n)){ errors[key]=t.invalidNumber; return; }
+      if(o.positive&&n<=0){ errors[key]=t.mustBePositive; return; }
+      if(o.nonNegative&&n<0){ errors[key]=t.mustBePositive; return; }
+    }
+  });
   return errors;
+}
+// Cross-field date check: end must not precede start
+function dateOrderError(start,end,t){
+  if(!start||!end)return null;
+  const s=new Date(start),e=new Date(end);
+  if(isNaN(s.getTime())||isNaN(e.getTime()))return null;
+  return e<s?t.endBeforeStart:null;
 }
 
 // Section header (iOS style)
@@ -672,9 +693,10 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete}){
   const openAdd=()=>{setForm({name:'',type:'',location:'',value:'',status:'',hasUnits:false,units:[],tenant:{name:'',phone:''},rent:{amount:'',frequency:'yearly',nextDue:'',lastPaid:''},contract:{startDate:'',endDate:''},notes:''});setErrors({});setModal('add');};
   const openEdit=item=>{setForm({...item,value:String(item.value),rent:{...item.rent,amount:String(item.rent?.amount||'')}});setErrors({});setModal({edit:item});};
   const save=()=>{
-    const errs=validate([['name',form.name],['type',form.type],['value',form.value],['status',form.status]],t);
+    const errs=validate([['name',form.name],['type',form.type],['value',form.value,{positive:true}],['status',form.status]],t);
+    const de=dateOrderError(form.contract?.startDate,form.contract?.endDate,t);if(de)errs.contractEnd=de;
     if(Object.keys(errs).length){setErrors(errs);return;}
-    const entry={...form,id:modal==='add'?genId():form.id,value:Number(form.value)||0,rent:{...form.rent,amount:Number(form.rent?.amount)||0}};
+    const entry={...form,id:modal==='add'?genId():form.id,value:num(form.value),rent:{...form.rent,amount:num(form.rent?.amount)}};
     setData(d=>({...d,realEstate:modal==='add'?[...(d.realEstate||[]),entry]:(d.realEstate||[]).map(x=>x.id===entry.id?entry:x)}));
     logActivity(modal==='add'?t.addedAction:t.editedAction,t.realEstate,`"${entry.name}"`);setModal(null);
   };
@@ -790,7 +812,7 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete}){
           </div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
             <Field label={t.startDate} T={T}><Inp type="date" value={form.contract?.startDate} onChange={e=>setForm(f=>({...f,contract:{...f.contract,startDate:e.target.value}})) } T={T}/></Field>
-            <Field label={t.endDate} T={T}><Inp type="date" value={form.contract?.endDate} onChange={e=>setForm(f=>({...f,contract:{...f.contract,endDate:e.target.value}})) } T={T}/></Field>
+            <Field label={t.endDate} T={T} error={errors.contractEnd}><Inp type="date" value={form.contract?.endDate} onChange={e=>setForm(f=>({...f,contract:{...f.contract,endDate:e.target.value}})) } T={T} error={errors.contractEnd}/></Field>
           </div>
         </>}
         <Field label={t.notes}><Ta value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} T={T}/></Field>
@@ -838,7 +860,7 @@ function CompaniesPage({data,setData,lang,t,T,logActivity,canDelete}){
   const items=data.companies||[];
   const openAdd=()=>{setForm({name:'',type:'',companyStatus:'active',ownership:100,capital:'',monthlyRevenue:'',monthlyExpense:'',employees:[],notes:''});setErrors({});setModal('add');};
   const openEdit=item=>{setForm({...item,capital:String(item.capital),monthlyRevenue:String(item.monthlyRevenue),monthlyExpense:String(item.monthlyExpense)});setErrors({});setModal({edit:item});};
-  const save=()=>{const errs=validate([['name',form.name],['capital',form.capital]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,capital:Number(form.capital)||0,monthlyRevenue:Number(form.monthlyRevenue)||0,monthlyExpense:Number(form.monthlyExpense)||0,ownership:Number(form.ownership)||0,employees:(form.employees||[]).map(e=>({...e,salary:Number(e.salary)||0}))};setData(d=>({...d,companies:modal==='add'?[...(d.companies||[]),entry]:(d.companies||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.companies,`"${entry.name}"`);setModal(null);};
+  const save=()=>{const errs=validate([['name',form.name],['capital',form.capital,{positive:true}],['monthlyRevenue',form.monthlyRevenue,{nonNegative:true,optional:true}],['monthlyExpense',form.monthlyExpense,{nonNegative:true,optional:true}]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,capital:num(form.capital),monthlyRevenue:num(form.monthlyRevenue),monthlyExpense:num(form.monthlyExpense),ownership:num(form.ownership),employees:(form.employees||[]).map(e=>({...e,salary:num(e.salary)}))};setData(d=>({...d,companies:modal==='add'?[...(d.companies||[]),entry]:(d.companies||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.companies,`"${entry.name}"`);setModal(null);};
   const del=id=>{const item=items.find(x=>x.id===id);setData(d=>({...d,companies:d.companies.filter(x=>x.id!==id)}));logActivity(t.deletedAction,t.companies,`"${item?.name}"`);setConfirm(null);};
   const addEmp=()=>setForm(f=>({...f,employees:[...(f.employees||[]),{id:genId(),name:'',salary:''}]}));
   const remEmp=eid=>setForm(f=>({...f,employees:f.employees.filter(e=>e.id!==eid)}));
@@ -846,11 +868,11 @@ function CompaniesPage({data,setData,lang,t,T,logActivity,canDelete}){
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <p style={{margin:0,fontSize:'0.78rem',color:T.textMuted}}>{lang==='ar'?'صافي شهري:':'Net/mo:'} <strong style={{color:T.success}}>{fmtC(items.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+c.monthlyRevenue-c.monthlyExpense,0),lang)}</strong></p>
+        <p style={{margin:0,fontSize:'0.78rem',color:T.textMuted}}>{lang==='ar'?'صافي شهري:':'Net/mo:'} <strong style={{color:T.success}}>{fmtC(items.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+num(c.monthlyRevenue)-num(c.monthlyExpense),0),lang)}</strong></p>
         <AddBtn onClick={openAdd} label={t.add} T={T}/>
       </div>
       {items.length===0&&<EmptyState icon="🏢" title={lang==='ar'?'لا توجد شركات':'No companies yet'} subtitle={lang==='ar'?'أضف شركاتك ومشاريعك هنا':'Add your companies and projects here'} T={T}/>}
-      {items.map(item=>{const profit=item.monthlyRevenue-item.monthlyExpense;const isActive=item.companyStatus==='active';return(
+      {items.map(item=>{const profit=num(item.monthlyRevenue)-num(item.monthlyExpense);const isActive=item.companyStatus==='active';return(
         <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:'10px',flexWrap:'wrap',gap:'4px'}}>
             <div><div style={{display:'flex',alignItems:'center',gap:'6px',flexWrap:'wrap'}}><h4 style={{margin:0,color:T.text,fontWeight:'700'}}>{item.name}</h4><Badge color={isActive?T.success:T.warning}>{isActive?t.activeCompany:t.underConstruction}</Badge></div><p style={{margin:'2px 0 0',fontSize:'0.73rem',color:T.textMuted}}>{item.type} • {item.ownership}% {t.ownership}</p></div>
@@ -861,7 +883,7 @@ function CompaniesPage({data,setData,lang,t,T,logActivity,canDelete}){
               <div key={i} style={{background:T.surface2,borderRadius:'10px',padding:'8px',textAlign:'center'}}><p style={{margin:0,fontSize:'0.63rem',color:T.textMuted}}>{s.l}</p><p style={{margin:0,fontSize:'0.76rem',fontWeight:'700',color:s.c||T.text}}>{s.v}</p></div>
             ))}
           </div>
-          {item.employees?.length>0&&<div style={{marginBottom:'8px'}}><div style={{display:'flex',justifyContent:'space-between',margin:'0 0 4px'}}><p style={{margin:0,fontSize:'0.68rem',color:T.textMuted}}>{t.employees} ({item.employees.length})</p><p style={{margin:0,fontSize:'0.68rem',color:T.textMuted}}>{t.totalSalaries}: <strong style={{color:T.gold}}>{fmtC(item.employees.reduce((s,e)=>s+(Number(e.salary)||0),0),lang)}</strong></p></div>{item.employees.map(e=>(<div key={e.id} style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem',padding:'5px 10px',background:T.surface2,borderRadius:'8px',marginBottom:'2px'}}><span style={{color:T.text}}>{e.name}</span><span style={{color:T.gold,fontWeight:'600'}}>{fmtC(Number(e.salary)||0,lang)}</span></div>))}</div>}
+          {item.employees?.length>0&&<div style={{marginBottom:'8px'}}><div style={{display:'flex',justifyContent:'space-between',margin:'0 0 4px'}}><p style={{margin:0,fontSize:'0.68rem',color:T.textMuted}}>{t.employees} ({item.employees.length})</p><p style={{margin:0,fontSize:'0.68rem',color:T.textMuted}}>{t.totalSalaries}: <strong style={{color:T.gold}}>{fmtC(item.employees.reduce((s,e)=>s+num(e.salary),0),lang)}</strong></p></div>{item.employees.map(e=>(<div key={e.id} style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem',padding:'5px 10px',background:T.surface2,borderRadius:'8px',marginBottom:'2px'}}><span style={{color:T.text}}>{e.name}</span><span style={{color:T.gold,fontWeight:'600'}}>{fmtC(num(e.salary),lang)}</span></div>))}</div>}
           {item.notes&&<p style={{fontSize:'0.7rem',color:T.textMuted,fontStyle:'italic',margin:'0 0 8px'}}>"{item.notes}"</p>}
           <div style={{display:'flex',gap:'6px'}}><SmBtn onClick={()=>openEdit(item)} label={t.edit} icon={Pencil} color={T.info} T={T}/>{canDelete&&<SmBtn onClick={()=>setConfirm(item.id)} label={t.delete} icon={Trash2} color={T.danger} T={T}/>}</div>
         </div>
@@ -873,8 +895,8 @@ function CompaniesPage({data,setData,lang,t,T,logActivity,canDelete}){
           <Field label={t.status}><div style={{display:'flex',gap:'4px'}}>{[['active',t.activeCompany,T.success],['underConstruction',t.underConstruction,T.warning]].map(([v,l,c])=>(<button key={v} onClick={()=>setForm(f=>({...f,companyStatus:v}))} style={{flex:1,padding:'10px',borderRadius:'12px',border:`1.5px solid ${form.companyStatus===v?c:T.border}`,background:form.companyStatus===v?c+'22':'transparent',color:form.companyStatus===v?c:T.textMuted,cursor:'pointer',fontFamily:'inherit',fontWeight:'600',fontSize:'0.8rem'}}>{l}</button>))}</div></Field>
           <Field label={`${t.ownership}%`}><Inp type="number" value={form.ownership} onChange={e=>setForm(f=>({...f,ownership:e.target.value}))} T={T}/></Field>
           <Field label={t.capital} error={errors.capital}><Inp type="number" value={form.capital} onChange={e=>setForm(f=>({...f,capital:e.target.value}))} T={T} error={errors.capital}/></Field>
-          <Field label={lang==='ar'?'الإيرادات الشهرية':'Monthly Revenue'}><Inp type="number" value={form.monthlyRevenue} onChange={e=>setForm(f=>({...f,monthlyRevenue:e.target.value}))} T={T}/></Field>
-          <Field label={lang==='ar'?'المصاريف الشهرية':'Monthly Expenses'}><Inp type="number" value={form.monthlyExpense} onChange={e=>setForm(f=>({...f,monthlyExpense:e.target.value}))} T={T}/></Field>
+          <Field label={lang==='ar'?'الإيرادات الشهرية':'Monthly Revenue'} error={errors.monthlyRevenue}><Inp type="number" value={form.monthlyRevenue} onChange={e=>setForm(f=>({...f,monthlyRevenue:e.target.value}))} T={T} error={errors.monthlyRevenue}/></Field>
+          <Field label={lang==='ar'?'المصاريف الشهرية':'Monthly Expenses'} error={errors.monthlyExpense}><Inp type="number" value={form.monthlyExpense} onChange={e=>setForm(f=>({...f,monthlyExpense:e.target.value}))} T={T} error={errors.monthlyExpense}/></Field>
         </div>
         <SectionHeader title={t.employees} T={T}/>
         <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'8px'}}><SmBtn onClick={addEmp} label={t.addEmployee} icon={Plus} color={T.gold} T={T}/></div>
@@ -903,11 +925,11 @@ function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete}){
   const items=data.vehicles||[];
   const openAdd=()=>{setForm({name:'',type:'',plateNumber:'',year:new Date().getFullYear(),value:'',insurance:{company:'',expiryDate:'',amount:''},registration:{expiryDate:'',amount:''},loan:{downPayment:'',monthlyInstallment:'',totalMonths:'',remainingMonths:'',nextDue:''},notes:''});setErrors({});setModal('add');};
   const openEdit=item=>{setForm({...item,value:String(item.value)});setErrors({});setModal({edit:item});};
-  const save=()=>{const errs=validate([['name',form.name],['type',form.type],['value',form.value]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,value:Number(form.value)||0,insurance:{...form.insurance,amount:Number(form.insurance?.amount)||0},registration:{...form.registration,amount:Number(form.registration?.amount)||0},loan:{...form.loan,downPayment:Number(form.loan?.downPayment)||0,monthlyInstallment:Number(form.loan?.monthlyInstallment)||0,totalMonths:Number(form.loan?.totalMonths)||0,remainingMonths:Number(form.loan?.remainingMonths)||0}};setData(d=>({...d,vehicles:modal==='add'?[...(d.vehicles||[]),entry]:(d.vehicles||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.vehicles,`"${entry.name}"`);setModal(null);};
+  const save=()=>{const errs=validate([['name',form.name],['type',form.type],['value',form.value,{positive:true}]],t);if(Object.keys(errs).length){setErrors(errs);return;}const rm=Math.min(num(form.loan?.remainingMonths),num(form.loan?.totalMonths)||num(form.loan?.remainingMonths));const entry={...form,id:modal==='add'?genId():form.id,value:num(form.value),insurance:{...form.insurance,amount:num(form.insurance?.amount)},registration:{...form.registration,amount:num(form.registration?.amount)},loan:{...form.loan,downPayment:num(form.loan?.downPayment),monthlyInstallment:num(form.loan?.monthlyInstallment),totalMonths:num(form.loan?.totalMonths),remainingMonths:rm}};setData(d=>({...d,vehicles:modal==='add'?[...(d.vehicles||[]),entry]:(d.vehicles||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.vehicles,`"${entry.name}"`);setModal(null);};
   const del=id=>{const item=items.find(x=>x.id===id);setData(d=>({...d,vehicles:d.vehicles.filter(x=>x.id!==id)}));logActivity(t.deletedAction,t.vehicles,`"${item?.name}"`);setConfirm(null);};
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><p style={{margin:0,fontSize:'0.78rem',color:T.textMuted}}>{fmtC(items.reduce((s,v)=>s+v.value,0),lang)}</p><AddBtn onClick={openAdd} label={t.add} T={T}/></div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><p style={{margin:0,fontSize:'0.78rem',color:T.textMuted}}>{fmtC(items.reduce((s,v)=>s+num(v.value),0),lang)}</p><AddBtn onClick={openAdd} label={t.add} T={T}/></div>
       {items.length===0&&<EmptyState icon="🚗" title={lang==='ar'?'لا توجد مركبات':'No vehicles yet'} subtitle={lang==='ar'?'سجّل سياراتك لمتابعة التأمين والأقساط':'Register vehicles to track insurance and installments'} T={T}/>}
       {items.map(item=>{const di=daysUntil(item.insurance?.expiryDate);const L=loanSummary(item.loan);const dl=L.hasLoan?daysUntil(item.loan?.nextDue):null;return(
         <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
@@ -1004,9 +1026,9 @@ function InvestmentsPage({data,setData,lang,t,T,logActivity,canDelete}){
   const icons={stocks:'📈',gold:'🥇',currencies:'💱',funds:'🏗️',crypto:'₿',startup:'🚀',other:'💡'};
   const openAdd=()=>{setForm({name:'',type:'',purchasePrice:'',currentValue:'',purchaseDate:todayStr(),notes:''});setErrors({});setModal('add');};
   const openEdit=item=>{setForm({...item,purchasePrice:String(item.purchasePrice),currentValue:String(item.currentValue)});setErrors({});setModal({edit:item});};
-  const save=()=>{const errs=validate([['name',form.name],['type',form.type],['purchasePrice',form.purchasePrice]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,purchasePrice:Number(form.purchasePrice)||0,currentValue:Number(form.currentValue)||0};setData(d=>({...d,investments:modal==='add'?[...(d.investments||[]),entry]:(d.investments||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.investments,`"${entry.name}"`);setModal(null);};
+  const save=()=>{const errs=validate([['name',form.name],['type',form.type],['purchasePrice',form.purchasePrice,{positive:true}],['currentValue',form.currentValue,{nonNegative:true,optional:true}]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,purchasePrice:num(form.purchasePrice),currentValue:num(form.currentValue)};setData(d=>({...d,investments:modal==='add'?[...(d.investments||[]),entry]:(d.investments||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.investments,`"${entry.name}"`);setModal(null);};
   const del=id=>{const item=items.find(x=>x.id===id);setData(d=>({...d,investments:d.investments.filter(x=>x.id!==id)}));logActivity(t.deletedAction,t.investments,`"${item?.name}"`);setConfirm(null);};
-  const totalCost=items.reduce((s,i)=>s+i.purchasePrice,0),totalVal=items.reduce((s,i)=>s+i.currentValue,0),totalPL=totalVal-totalCost;
+  const totalCost=items.reduce((s,i)=>s+num(i.purchasePrice),0),totalVal=items.reduce((s,i)=>s+num(i.currentValue),0),totalPL=totalVal-totalCost;
   const filtered=typeFilter==='all'?items:items.filter(x=>x.type===typeFilter);
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
@@ -1019,7 +1041,7 @@ function InvestmentsPage({data,setData,lang,t,T,logActivity,canDelete}){
       </div>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
         {filtered.length===0&&<div style={{gridColumn:'1/-1'}}><EmptyState icon="📈" title={lang==='ar'?'لا توجد استثمارات':'No investments yet'} subtitle={lang==='ar'?'أضف محافظك وأصولك الاستثمارية':'Add your portfolios and investment assets'} T={T}/></div>}
-        {filtered.map(item=>{const pl=item.currentValue-item.purchasePrice;const p=pct(pl,item.purchasePrice);return(
+        {filtered.map(item=>{const pl=num(item.currentValue)-num(item.purchasePrice);const p=pct(pl,num(item.purchasePrice));return(
           <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'12px',boxShadow:T.cardShadow}}>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:'6px'}}><span style={{fontSize:'1.2rem'}}>{icons[item.type]||'💡'}</span><Badge color={pl>=0?T.success:T.danger}>{pl>=0?'+':''}{p}%</Badge></div>
             <h4 style={{margin:'0 0 4px',color:T.text,fontWeight:'700',fontSize:'0.85rem'}}>{item.name}</h4>
@@ -1040,7 +1062,7 @@ function InvestmentsPage({data,setData,lang,t,T,logActivity,canDelete}){
         </div>{errors.type&&<p style={{margin:'4px 0 0',fontSize:'0.7rem',color:T.danger}}>{errors.type}</p>}</Field>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
           <Field label={`${t.purchasePrice} (${t.sar})`} error={errors.purchasePrice}><Inp type="number" value={form.purchasePrice} onChange={e=>setForm(f=>({...f,purchasePrice:e.target.value}))} T={T} error={errors.purchasePrice}/></Field>
-          <Field label={`${t.currentValue} (${t.sar})`}><Inp type="number" value={form.currentValue} onChange={e=>setForm(f=>({...f,currentValue:e.target.value}))} T={T}/></Field>
+          <Field label={`${t.currentValue} (${t.sar})`} error={errors.currentValue}><Inp type="number" value={form.currentValue} onChange={e=>setForm(f=>({...f,currentValue:e.target.value}))} T={T} error={errors.currentValue}/></Field>
           <Field label={t.purchaseDate}><Inp type="date" value={form.purchaseDate} onChange={e=>setForm(f=>({...f,purchaseDate:e.target.value}))} T={T}/></Field>
         </div>
         <Field label={t.notes}><Ta value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} T={T}/></Field>
@@ -1142,19 +1164,19 @@ function LoansGivenPage({data,setData,lang,t,T,logActivity,canDelete}){
   const [modal,setModal]=useState(false),[payModal,setPayModal]=useState(null),[confirm,setConfirm]=useState(null),[form,setForm]=useState({}),[errors,setErrors]=useState({}),[payAmt,setPayAmt]=useState('');
   const items=data.loansGiven||[];
   const openAdd=()=>{setForm({borrowerName:'',borrowerPhone:'',amount:'',loanDate:todayStr(),durationMonths:'',returnDate:'',notes:''});setErrors({});setModal(true);};
-  const save=()=>{const errs=validate([['borrowerName',form.borrowerName],['amount',form.amount]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:genId(),amount:Number(form.amount)||0,durationMonths:Number(form.durationMonths)||0,payments:[],status:'active'};if(!entry.returnDate&&entry.loanDate&&entry.durationMonths){const d=new Date(entry.loanDate);d.setMonth(d.getMonth()+entry.durationMonths);entry.returnDate=d.toISOString().split('T')[0];}setData(d=>({...d,loansGiven:[entry,...(d.loansGiven||[])]}));logActivity(t.addedAction,t.loansGiven,`${entry.borrowerName} — ${fmtC(entry.amount,lang)}`);setModal(false);};
-  const recordPay=id=>{const amount=Number(payAmt)||0;if(!amount)return;const payment={id:genId(),date:todayStr(),amount};setData(d=>({...d,loansGiven:d.loansGiven.map(l=>{if(l.id!==id)return l;const np=[...(l.payments||[]),payment];const tp=np.reduce((s,p)=>s+p.amount,0);return{...l,payments:np,status:tp>=l.amount?'completed':'active'};})}));logActivity(t.paidAction,t.loansGiven,fmtC(amount,lang));setPayModal(null);setPayAmt('');};
+  const save=()=>{const errs=validate([['borrowerName',form.borrowerName],['amount',form.amount,{positive:true}]],t);const de=dateOrderError(form.loanDate,form.returnDate,t);if(de)errs.returnDate=de;if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:genId(),amount:num(form.amount),durationMonths:num(form.durationMonths),payments:[],status:'active'};if(!entry.returnDate&&entry.loanDate&&entry.durationMonths){const d=new Date(entry.loanDate);d.setMonth(d.getMonth()+entry.durationMonths);entry.returnDate=d.toISOString().split('T')[0];}setData(d=>({...d,loansGiven:[entry,...(d.loansGiven||[])]}));logActivity(t.addedAction,t.loansGiven,`${entry.borrowerName} — ${fmtC(entry.amount,lang)}`);setModal(false);};
+  const recordPay=id=>{const amount=num(payAmt);if(amount<=0)return;const payment={id:genId(),date:todayStr(),amount};setData(d=>({...d,loansGiven:d.loansGiven.map(l=>{if(l.id!==id)return l;const np=[...(l.payments||[]),payment];const tp=np.reduce((s,p)=>s+num(p.amount),0);return{...l,payments:np,status:tp>=num(l.amount)?'completed':'active'};})}));logActivity(t.paidAction,t.loansGiven,fmtC(amount,lang));setPayModal(null);setPayAmt('');};
   const del=id=>{setData(d=>({...d,loansGiven:d.loansGiven.filter(l=>l.id!==id)}));setConfirm(null);};
   const sc={active:T.info,completed:T.success,late:T.danger};
   const sl={ar:{active:'نشط',completed:'منتهي',late:'متأخر'},en:{active:'Active',completed:'Done',late:'Late'}};
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <div style={{fontSize:'0.78rem',color:T.textMuted}}>{lang==='ar'?'متبقي:':'Remaining:'} <strong style={{color:T.warning}}>{fmtC(items.reduce((s,l)=>s+l.amount-(l.payments||[]).reduce((sp,p)=>sp+p.amount,0),0),lang)}</strong></div>
+        <div style={{fontSize:'0.78rem',color:T.textMuted}}>{lang==='ar'?'متبقي:':'Remaining:'} <strong style={{color:T.warning}}>{fmtC(items.reduce((s,l)=>s+num(l.amount)-(l.payments||[]).reduce((sp,p)=>sp+num(p.amount),0),0),lang)}</strong></div>
         <AddBtn onClick={openAdd} label={t.add} T={T}/>
       </div>
       {items.length===0&&<EmptyState icon="🤝" title={lang==='ar'?'لا توجد قروض':'No loans given'} subtitle={lang==='ar'?'سجّل القروض التي أعطيتها لمتابعة السداد':'Track loans you gave to others'} T={T}/>}
-      {items.map(item=>{const totalPaid=(item.payments||[]).reduce((s,p)=>s+p.amount,0);const remaining=item.amount-totalPaid;const p=pct(totalPaid,item.amount);const dr=daysUntil(item.returnDate);const status=item.status==='completed'?'completed':dr!==null&&dr<0?'late':'active';return(
+      {items.map(item=>{const totalPaid=(item.payments||[]).reduce((s,p)=>s+num(p.amount),0);const remaining=num(item.amount)-totalPaid;const p=pct(totalPaid,num(item.amount));const dr=daysUntil(item.returnDate);const status=item.status==='completed'?'completed':dr!==null&&dr<0?'late':'active';return(
         <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:'8px',flexWrap:'wrap',gap:'4px'}}>
             <div><div style={{display:'flex',alignItems:'center',gap:'6px'}}><h4 style={{margin:0,color:T.text,fontWeight:'700'}}>{item.borrowerName}</h4><Badge color={sc[status]}>{sl[lang][status]}</Badge></div>{item.borrowerPhone&&<p style={{margin:'2px 0 0',fontSize:'0.7rem',color:T.textMuted}}>{item.borrowerPhone}</p>}</div>
@@ -1178,7 +1200,7 @@ function LoansGivenPage({data,setData,lang,t,T,logActivity,canDelete}){
           <Field label={`${t.amount} (${t.sar})`} error={errors.amount}><Inp type="number" value={form.amount} onChange={e=>setForm(f=>({...f,amount:e.target.value}))} T={T} error={errors.amount}/></Field>
           <Field label={t.loanDate}><Inp type="date" value={form.loanDate} onChange={e=>setForm(f=>({...f,loanDate:e.target.value}))} T={T}/></Field>
           <Field label={t.durationMonths}><Inp type="number" value={form.durationMonths} onChange={e=>setForm(f=>({...f,durationMonths:e.target.value}))} T={T}/></Field>
-          <Field label={t.returnDate}><Inp type="date" value={form.returnDate} onChange={e=>setForm(f=>({...f,returnDate:e.target.value}))} T={T}/></Field>
+          <Field label={t.returnDate} error={errors.returnDate}><Inp type="date" value={form.returnDate} onChange={e=>setForm(f=>({...f,returnDate:e.target.value}))} T={T} error={errors.returnDate}/></Field>
         </div>
         <Field label={t.notes}><Ta value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} T={T}/></Field>
         <SaveBtn onClick={save} label={t.save} T={T}/><CancelBtn onClick={()=>setModal(false)} label={t.cancel} T={T}/>
@@ -1195,15 +1217,15 @@ function LoansGivenPage({data,setData,lang,t,T,logActivity,canDelete}){
 
 function FinancialPage({data,lang,t,T}){
   const re=data.realEstate||[],co=data.companies||[],iv=data.investments||[],tr=data.transactions||[];
-  const propROI=re.map(p=>{let ar=0;if(p.hasUnits)ar=p.units.filter(u=>u.status==='occupied').reduce((s,u)=>{let r=u.rent?.amount||0;if(u.rent?.frequency==='monthly')r*=12;if(u.rent?.frequency==='quarterly')r*=4;return s+r;},0);else if(p.status==='occupied'){let r=p.rent?.amount||0;if(p.rent?.frequency==='monthly')r*=12;if(p.rent?.frequency==='quarterly')r*=4;ar=r;}const roi=p.value>0?((ar/p.value)*100):0;return{name:p.name.length>12?p.name.slice(0,12)+'..':p.name,roi:Number(roi.toFixed(1)),ar};}).filter(p=>p.ar>0).sort((a,b)=>b.roi-a.roi);
-  const invPerf=iv.map(i=>{const pl=i.currentValue-i.purchasePrice;const p=i.purchasePrice>0?((pl/i.purchasePrice)*100):0;return{name:i.name.length>14?i.name.slice(0,14)+'...':i.name,pl,pct:Number(p.toFixed(1))};}).sort((a,b)=>b.pct-a.pct);
-  const trend=Array.from({length:6},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-5+i);const m=d.getMonth(),y=d.getFullYear();const inc=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='income'&&td.getMonth()===m&&td.getFullYear()===y;}).reduce((s,tx)=>s+tx.amount,0);const exp=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='expense'&&td.getMonth()===m&&td.getFullYear()===y;}).reduce((s,tx)=>s+tx.amount,0);return{name:lang==='ar'?MONTHS_AR[m]:MONTHS_EN[m],net:inc-exp};});
+  const propROI=re.map(p=>{let ar=0;if(p.hasUnits)ar=(p.units||[]).filter(u=>u.status==='occupied').reduce((s,u)=>{let r=num(u.rent?.amount);if(u.rent?.frequency==='monthly')r*=12;if(u.rent?.frequency==='quarterly')r*=4;return s+r;},0);else if(p.status==='occupied'){let r=num(p.rent?.amount);if(p.rent?.frequency==='monthly')r*=12;if(p.rent?.frequency==='quarterly')r*=4;ar=r;}const roi=num(p.value)>0?((ar/num(p.value))*100):0;return{name:p.name.length>12?p.name.slice(0,12)+'..':p.name,roi:Number(roi.toFixed(1)),ar};}).filter(p=>p.ar>0).sort((a,b)=>b.roi-a.roi);
+  const invPerf=iv.map(i=>{const pl=num(i.currentValue)-num(i.purchasePrice);const p=num(i.purchasePrice)>0?((pl/num(i.purchasePrice))*100):0;return{name:i.name.length>14?i.name.slice(0,14)+'...':i.name,pl,pct:Number(p.toFixed(1))};}).sort((a,b)=>b.pct-a.pct);
+  const trend=Array.from({length:6},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-5+i);const m=d.getMonth(),y=d.getFullYear();const inc=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='income'&&td.getMonth()===m&&td.getFullYear()===y;}).reduce((s,tx)=>s+num(tx.amount),0);const exp=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='expense'&&td.getMonth()===m&&td.getFullYear()===y;}).reduce((s,tx)=>s+num(tx.amount),0);return{name:lang==='ar'?MONTHS_AR[m]:MONTHS_EN[m],net:inc-exp};});
   const avgROI=propROI.reduce((s,p)=>s+p.roi,0)/(propROI.length||1);
   const recs=[];
   propROI.forEach(p=>{if(p.roi<avgROI*0.7)recs.push({icon:'⚠️',text:`${p.name}: عائد ${p.roi}% أقل من المتوسط`});});
   if(iv.find(i=>i.type==='stocks')&&!iv.find(i=>i.type==='crypto'))recs.push({icon:'💡',text:lang==='ar'?'تنوع: أضف عملات رقمية كتحوط <5%':'Consider 5% crypto hedge'});
   if(co.filter(c=>c.companyStatus==='underConstruction').length>0)recs.push({icon:'🏗️',text:lang==='ar'?'تابع تكاليف المشاريع قيد الإنشاء':'Monitor construction costs'});
-  const totalLoanRem=(data.loansGiven||[]).filter(l=>l.status==='active').reduce((s,l)=>s+l.amount-(l.payments||[]).reduce((sp,p)=>sp+p.amount,0),0);
+  const totalLoanRem=(data.loansGiven||[]).filter(l=>l.status==='active').reduce((s,l)=>s+num(l.amount)-(l.payments||[]).reduce((sp,p)=>sp+num(p.amount),0),0);
   if(totalLoanRem>0)recs.push({icon:'🤝',text:`${lang==='ar'?'قروض متبقية:':'Outstanding loans:'} ${fmtC(totalLoanRem,lang)}`});
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
@@ -1251,11 +1273,11 @@ function ExpensesInner({data,setData,lang,t,T,logActivity,currentUser,canDelete,
   const [modal,setModal]=useState(false),[confirm,setConfirm]=useState(null),[catModal,setCatModal]=useState(false),[newCat,setNewCat]=useState(''),[form,setForm]=useState({}),[errors,setErrors]=useState({}),[filter,setFilter]=useState('all');
   const items=data.expenses||[];
   const openAdd=()=>{setForm({date:todayStr(),amount:'',category:cats[0]||'',description:''});setErrors({});setModal(true);};
-  const save=()=>{const errs=validate([['amount',form.amount],['category',form.category]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:genId(),amount:Number(form.amount)||0,addedBy:currentUser?.name||'?'};setData(d=>({...d,expenses:[entry,...(d.expenses||[])]}));logActivity(t.addedAction,t.expenses,fmtC(entry.amount,lang));setModal(false);};
+  const save=()=>{const errs=validate([['amount',form.amount,{positive:true}],['category',form.category]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:genId(),amount:num(form.amount),addedBy:currentUser?.name||'?'};setData(d=>({...d,expenses:[entry,...(d.expenses||[])]}));logActivity(t.addedAction,t.expenses,fmtC(entry.amount,lang));setModal(false);};
   const del=id=>{setData(d=>({...d,expenses:d.expenses.filter(x=>x.id!==id)}));setConfirm(null);};
   const months=[...new Set(items.map(e=>e.date?.substring(0,7)))].sort().reverse();
   const filtered=filter==='all'?items:items.filter(e=>e.date?.startsWith(filter));
-  const total=filtered.reduce((s,e)=>s+e.amount,0);
+  const total=filtered.reduce((s,e)=>s+num(e.amount),0);
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
       <div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center'}}>
@@ -1297,9 +1319,9 @@ function TransactionsInner({data,setData,lang,t,T,logActivity,currentUser}){
   const [modal,setModal]=useState(false),[typeF,setTypeF]=useState('all'),[form,setForm]=useState({}),[errors,setErrors]=useState({});
   const items=data.transactions||[];
   const openAdd=()=>{setForm({date:todayStr(),type:'income',amount:'',category:'',description:''});setErrors({});setModal(true);};
-  const save=()=>{const errs=validate([['amount',form.amount]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:genId(),amount:Number(form.amount)||0,addedBy:currentUser?.name||'?'};setData(d=>({...d,transactions:[entry,...(d.transactions||[])]}));logActivity(t.addedAction,t.transactions,fmtC(entry.amount,lang));setModal(false);};
+  const save=()=>{const errs=validate([['amount',form.amount,{positive:true}]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:genId(),amount:num(form.amount),addedBy:currentUser?.name||'?'};setData(d=>({...d,transactions:[entry,...(d.transactions||[])]}));logActivity(t.addedAction,t.transactions,fmtC(entry.amount,lang));setModal(false);};
   const filtered=typeF==='all'?items:items.filter(x=>x.type===typeF);
-  const tIn=items.filter(x=>x.type==='income').reduce((s,x)=>s+x.amount,0),tOut=items.filter(x=>x.type==='expense').reduce((s,x)=>s+x.amount,0);
+  const tIn=items.filter(x=>x.type==='income').reduce((s,x)=>s+num(x.amount),0),tOut=items.filter(x=>x.type==='expense').reduce((s,x)=>s+num(x.amount),0);
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px'}}>
@@ -1338,8 +1360,16 @@ function TransactionsInner({data,setData,lang,t,T,logActivity,currentUser}){
 
 function ReportsInner({data,lang,t,T}){
   const tr=data.transactions||[];
+  const ex=data.expenses||[];
   const months=Array.from({length:6},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-5+i);return{m:d.getMonth(),y:d.getFullYear(),label:lang==='ar'?MONTHS_AR[d.getMonth()]:MONTHS_EN[d.getMonth()]};});
-  const monthData=months.map(({m,y,label})=>{const inc=tr.filter(x=>{const d=new Date(x.date);return x.type==='income'&&d.getMonth()===m&&d.getFullYear()===y;}).reduce((s,x)=>s+x.amount,0);const exp=tr.filter(x=>{const d=new Date(x.date);return x.type==='expense'&&d.getMonth()===m&&d.getFullYear()===y;}).reduce((s,x)=>s+x.amount,0);return{label,inc,exp,net:inc-exp};});
+  const monthData=months.map(({m,y,label})=>{
+    const inMonth=dt=>{const d=new Date(dt);return d.getMonth()===m&&d.getFullYear()===y;};
+    const inc=tr.filter(x=>x.type==='income'&&inMonth(x.date)).reduce((s,x)=>s+num(x.amount),0);
+    const expTr=tr.filter(x=>x.type==='expense'&&inMonth(x.date)).reduce((s,x)=>s+num(x.amount),0);
+    const expManual=ex.filter(x=>inMonth(x.date)).reduce((s,x)=>s+num(x.amount),0);
+    const exp=expTr+expManual;
+    return{label,inc,exp,net:inc-exp};
+  });
   const handleCSV=()=>{const rows=[['التاريخ','النوع','الفئة','الوصف','المبلغ'],...tr.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(x=>[x.date,x.type==='income'?'دخل':'مصروف',x.category,x.description,x.amount])];const csv=rows.map(r=>r.join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);a.download=`تقرير_${todayStr()}.csv`;a.click();};
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
