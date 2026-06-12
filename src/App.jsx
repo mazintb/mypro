@@ -10,7 +10,7 @@ import {
   Briefcase, DollarSign, ArrowUpCircle, ArrowDownCircle, Globe,
   CheckCircle2, LogOut, Wallet, BarChart3, Wrench, HandCoins, Lightbulb,
   ChevronRight, ChevronDown, FileText, Award, Moon, Sun, Home,
-  MoreHorizontal, TrendingDown, Filter
+  MoreHorizontal, TrendingDown, Filter, Eye, ShieldCheck, Calendar
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -79,6 +79,11 @@ const TR = {
     recommendations:'توصيات', customCategories:'فئاتي المخصصة',
     nextDue:'الاستحقاق القادم', lastPaid:'آخر دفعة',
     insExpiry:'انتهاء التأمين', regExpiry:'انتهاء التسجيل',
+    downPayment:'الدفعة الأولى', totalInstallments:'إجمالي الأقساط', paidInstallments:'الأقساط المدفوعة',
+    installmentSummary:'ملخص الأقساط', totalCost:'التكلفة الإجمالية', remainingAmount:'المبلغ المتبقي',
+    paidAmount:'المبلغ المدفوع', vehicleDetails:'تفاصيل المركبة', annualPremium:'القسط السنوي', annualFee:'الرسوم السنوية',
+    liabilities:'الأقساط والالتزامات', monthlyObligations:'الالتزامات الشهرية', totalRemainingDebt:'إجمالي المتبقي',
+    viewDetails:'عرض التفاصيل', totalSalaries:'إجمالي الرواتب', noInstallment:'لا يوجد قسط',
     totalRent:'إيرادات الإيجار', addTransaction:'إضافة معاملة',
     addedAction:'أضاف', editedAction:'عدّل', deletedAction:'حذف', paidAction:'دفع',
     investmentType:'نوع الاستثمار', purchaseDate:'تاريخ الشراء', all:'الكل',
@@ -129,6 +134,11 @@ const TR = {
     recommendations:'Insights', customCategories:'My Categories',
     nextDue:'Next Due', lastPaid:'Last Paid',
     insExpiry:'Ins. Expiry', regExpiry:'Reg. Expiry',
+    downPayment:'Down Payment', totalInstallments:'Total Installments', paidInstallments:'Paid Installments',
+    installmentSummary:'Installment Summary', totalCost:'Total Cost', remainingAmount:'Remaining Amount',
+    paidAmount:'Paid Amount', vehicleDetails:'Vehicle Details', annualPremium:'Annual Premium', annualFee:'Annual Fee',
+    liabilities:'Installments & Liabilities', monthlyObligations:'Monthly Obligations', totalRemainingDebt:'Total Remaining',
+    viewDetails:'View Details', totalSalaries:'Total Salaries', noInstallment:'No installment',
     totalRent:'Total Rent', addTransaction:'Add Transaction',
     addedAction:'added', editedAction:'edited', deletedAction:'deleted', paidAction:'paid',
     investmentType:'Investment Type', purchaseDate:'Purchase Date', all:'All',
@@ -145,7 +155,15 @@ const todayStr=()=>new Date().toISOString().split('T')[0];
 const daysUntil=d=>d?Math.ceil((new Date(d)-new Date())/86400000):null;
 const fmt=n=>Math.round(n||0).toLocaleString('ar-SA');
 const fmtC=(n,lang)=>`${fmt(n)} ${lang==='ar'?'ريال':'SAR'}`;
-const fmtDate=(d,lang)=>d?new Date(d).toLocaleDateString(lang==='ar'?'ar-SA':'en-US'):'—';
+let DATE_CAL='gregory';   // 'gregory' | 'hijri' — set from App settings during render
+const fmtDate=(d,lang)=>{
+  if(!d)return '—';
+  const dt=new Date(d);
+  if(isNaN(dt.getTime()))return '—';
+  const calId=DATE_CAL==='hijri'?'islamic-umalqura':'gregory';
+  const loc=(lang==='ar'?'ar-SA':'en-US')+'-u-ca-'+calId;
+  return dt.toLocaleDateString(loc,{year:'numeric',month:'2-digit',day:'2-digit'});
+};
 const pct=(a,b)=>b?((a/b)*100).toFixed(1):'0.0';
 const MONTHS_AR=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 const MONTHS_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -171,8 +189,8 @@ function buildSampleData(){
       {id:genId(),name:'مشروع المجمع التجاري',type:'عقارات',companyStatus:'underConstruction',ownership:60,capital:2000000,monthlyRevenue:0,monthlyExpense:45000,employees:[],notes:'يتوقع الانتهاء 2026'},
     ],
     vehicles:[
-      {id:genId(),name:'تويوتا لاند كروزر 2022',type:'SUV',plateNumber:'أ ب ج 1234',year:2022,value:280000,insurance:{company:'التعاونية',expiryDate:'2025-09-15',amount:4500},registration:{expiryDate:'2025-11-30',amount:900},loan:{amount:0,monthlyInstallment:0,nextDue:'',remainingMonths:0},notes:''},
-      {id:genId(),name:'مرسيدس E-Class 2023',type:'Sedan',plateNumber:'د هـ و 5678',year:2023,value:320000,insurance:{company:'ولاء',expiryDate:'2026-03-20',amount:6200},registration:{expiryDate:'2026-03-20',amount:1100},loan:{amount:180000,monthlyInstallment:5500,nextDue:'2025-06-05',remainingMonths:28},notes:''},
+      {id:genId(),name:'تويوتا لاند كروزر 2022',type:'SUV',plateNumber:'أ ب ج 1234',year:2022,value:280000,insurance:{company:'التعاونية',expiryDate:'2025-09-15',amount:4500},registration:{expiryDate:'2025-11-30',amount:900},loan:{downPayment:0,monthlyInstallment:0,totalMonths:0,remainingMonths:0,nextDue:''},notes:''},
+      {id:genId(),name:'مرسيدس E-Class 2023',type:'Sedan',plateNumber:'د هـ و 5678',year:2023,value:320000,insurance:{company:'ولاء',expiryDate:'2026-03-20',amount:6200},registration:{expiryDate:'2026-03-20',amount:1100},loan:{downPayment:60000,monthlyInstallment:5500,totalMonths:48,remainingMonths:28,nextDue:'2025-06-05'},notes:''},
     ],
     investments:[
       {id:genId(),name:'محفظة تداول السعودية',type:'stocks',purchasePrice:150000,currentValue:178000,purchaseDate:'2023-01-15',notes:''},
@@ -181,7 +199,7 @@ function buildSampleData(){
     ],
     operations:[
       {id:genId(),date:'2025-05-01',type:'maintenance',description:'صيانة سباكة عمارة الروضة',amount:2500,frequency:'once',linkedName:'عمارة الروضة',status:'paid',addedBy:'المالك'},
-      {id:genId(),date:'2025-06-05',type:'installment',description:'قسط مرسيدس E-Class',amount:5500,frequency:'monthly',nextDue:'2025-06-05',linkedName:'مرسيدس',status:'pending',addedBy:'المالك'},
+      {id:genId(),date:'2025-06-10',type:'installment',description:'قسط أرض مخطط النرجس',amount:8000,frequency:'monthly',nextDue:'2025-07-10',linkedName:'أرض النرجس',totalMonths:36,remainingMonths:22,status:'pending',addedBy:'المالك'},
     ],
     loansGiven:[
       {id:genId(),borrowerName:'عبدالرحمن الشمري',borrowerPhone:'0501111222',amount:50000,loanDate:'2024-10-01',durationMonths:12,returnDate:'2025-10-01',status:'active',payments:[{id:genId(),date:'2025-02-01',amount:10000}],notes:''},
@@ -479,9 +497,16 @@ function Dashboard({data,lang,t,T}){
     const [y,m]=ym.split('-').map(Number);
     const mn=lang==='ar'?MONTHS_AR[m-1]:MONTHS_EN[m-1];
     const inc=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='income'&&td.getMonth()===m-1&&td.getFullYear()===y;}).reduce((s,tx)=>s+tx.amount,0);
-    const exp=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='expense'&&td.getMonth()===m-1&&td.getFullYear()===y;}).reduce((s,tx)=>s+tx.amount,0);
-    return{name:mn,دخل:inc,مصاريف:exp};
+    const expTr=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='expense'&&td.getMonth()===m-1&&td.getFullYear()===y;}).reduce((s,tx)=>s+tx.amount,0);
+    const expManual=(data.expenses||[]).filter(ex=>{const td=new Date(ex.date);return td.getMonth()===m-1&&td.getFullYear()===y;}).reduce((s,ex)=>s+ex.amount,0);
+    return{name:mn,دخل:inc,مصاريف:expTr+expManual};
   });
+  // Aggregated installment liabilities (vehicles + installment-type operations)
+  const vehLoans=ve.map(v=>loanSummary(v.loan)).filter(L=>L.hasLoan);
+  const opInst=(data.operations||[]).filter(o=>o.type==='installment');
+  const liabMonthly=vehLoans.reduce((s,L)=>s+L.inst,0)+opInst.filter(o=>o.frequency==='monthly').reduce((s,o)=>s+o.amount,0);
+  const liabRemaining=vehLoans.reduce((s,L)=>s+L.remainingAmount,0)+opInst.reduce((s,o)=>s+(o.remainingMonths||0)*o.amount,0);
+  const liabCount=vehLoans.length+opInst.length;
   const pieData=[{name:lang==='ar'?'عقارات':'Real Estate',value:re.reduce((s,p)=>s+p.value,0)},{name:lang==='ar'?'شركات':'Companies',value:co.reduce((s,c)=>s+c.capital,0)},{name:lang==='ar'?'مركبات':'Vehicles',value:ve.reduce((s,v)=>s+v.value,0)},{name:lang==='ar'?'استثمارات':'Investments',value:iv.reduce((s,i)=>s+i.currentValue,0)}].filter(d=>d.value>0);
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
@@ -536,6 +561,34 @@ function Dashboard({data,lang,t,T}){
         <StatCard label={lang==='ar'?'صافي شهري':'Net Monthly'} value={fmtC(mInc-mExp,lang)} iconText='ر' color={mInc>=mExp?T.success:T.danger} T={T}/>
         <StatCard label={t.totalAssets} value={fmtC(totalAssets,lang)} icon={Briefcase} color={T.gold} T={T}/>
       </div>
+      {/* Installments & Liabilities */}
+      {liabCount>0&&(
+        <div style={{background:T.surface,borderRadius:'20px',padding:'16px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
+          <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'12px'}}>
+            <div style={{width:'28px',height:'28px',borderRadius:'8px',background:T.gold+'18',display:'flex',alignItems:'center',justifyContent:'center'}}><ShieldCheck size={14} color={T.gold}/></div>
+            <span style={{color:T.text,fontWeight:'700',fontSize:'0.88rem',flex:1}}>{t.liabilities}</span>
+            <span style={{background:T.gold,color:'#fff',borderRadius:'10px',padding:'2px 8px',fontSize:'0.65rem',fontWeight:'800'}}>{liabCount}</span>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+            <div style={{background:T.surface2,borderRadius:'12px',padding:'12px',textAlign:'center'}}><p style={{margin:0,fontSize:'0.66rem',color:T.textMuted}}>{t.monthlyObligations}</p><p style={{margin:'2px 0 0',fontWeight:'800',fontSize:'0.95rem',color:T.danger}}>{fmtC(liabMonthly,lang)}</p></div>
+            <div style={{background:T.surface2,borderRadius:'12px',padding:'12px',textAlign:'center'}}><p style={{margin:0,fontSize:'0.66rem',color:T.textMuted}}>{t.totalRemainingDebt}</p><p style={{margin:'2px 0 0',fontWeight:'800',fontSize:'0.95rem',color:T.warning}}>{fmtC(liabRemaining,lang)}</p></div>
+          </div>
+          <div style={{marginTop:'10px',display:'flex',flexDirection:'column',gap:'6px'}}>
+            {ve.filter(v=>loanSummary(v.loan).hasLoan).map(v=>{const L=loanSummary(v.loan);return(
+              <div key={v.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:'0.74rem',padding:'6px 10px',background:T.surface2,borderRadius:'10px'}}>
+                <span style={{color:T.text}}>🚗 {v.name}</span>
+                <span style={{color:T.textMuted}}>{L.rem}{L.total>0?`/${L.total}`:''} • <span style={{color:T.danger,fontWeight:'700'}}>{fmtC(L.remainingAmount,lang)}</span></span>
+              </div>
+            );})}
+            {opInst.map(o=>(
+              <div key={o.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:'0.74rem',padding:'6px 10px',background:T.surface2,borderRadius:'10px'}}>
+                <span style={{color:T.text}}>💳 {o.description}</span>
+                <span style={{color:T.textMuted}}>{o.remainingMonths?`${o.remainingMonths} • `:''}<span style={{color:T.danger,fontWeight:'700'}}>{fmtC((o.remainingMonths||0)*o.amount||o.amount,lang)}</span></span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {/* Alerts */}
       {alerts.length>0&&(
         <div style={{background:T.surface,borderRadius:'20px',padding:'16px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
@@ -772,7 +825,7 @@ function CompaniesPage({data,setData,lang,t,T,logActivity,canDelete}){
   const items=data.companies||[];
   const openAdd=()=>{setForm({name:'',type:'',companyStatus:'active',ownership:100,capital:'',monthlyRevenue:'',monthlyExpense:'',employees:[],notes:''});setErrors({});setModal('add');};
   const openEdit=item=>{setForm({...item,capital:String(item.capital),monthlyRevenue:String(item.monthlyRevenue),monthlyExpense:String(item.monthlyExpense)});setErrors({});setModal({edit:item});};
-  const save=()=>{const errs=validate([['name',form.name],['capital',form.capital]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,capital:Number(form.capital)||0,monthlyRevenue:Number(form.monthlyRevenue)||0,monthlyExpense:Number(form.monthlyExpense)||0,ownership:Number(form.ownership)||0};setData(d=>({...d,companies:modal==='add'?[...(d.companies||[]),entry]:(d.companies||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.companies,`"${entry.name}"`);setModal(null);};
+  const save=()=>{const errs=validate([['name',form.name],['capital',form.capital]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,capital:Number(form.capital)||0,monthlyRevenue:Number(form.monthlyRevenue)||0,monthlyExpense:Number(form.monthlyExpense)||0,ownership:Number(form.ownership)||0,employees:(form.employees||[]).map(e=>({...e,salary:Number(e.salary)||0}))};setData(d=>({...d,companies:modal==='add'?[...(d.companies||[]),entry]:(d.companies||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.companies,`"${entry.name}"`);setModal(null);};
   const del=id=>{const item=items.find(x=>x.id===id);setData(d=>({...d,companies:d.companies.filter(x=>x.id!==id)}));logActivity(t.deletedAction,t.companies,`"${item?.name}"`);setConfirm(null);};
   const addEmp=()=>setForm(f=>({...f,employees:[...(f.employees||[]),{id:genId(),name:'',salary:''}]}));
   const remEmp=eid=>setForm(f=>({...f,employees:f.employees.filter(e=>e.id!==eid)}));
@@ -795,7 +848,7 @@ function CompaniesPage({data,setData,lang,t,T,logActivity,canDelete}){
               <div key={i} style={{background:T.surface2,borderRadius:'10px',padding:'8px',textAlign:'center'}}><p style={{margin:0,fontSize:'0.63rem',color:T.textMuted}}>{s.l}</p><p style={{margin:0,fontSize:'0.76rem',fontWeight:'700',color:s.c||T.text}}>{s.v}</p></div>
             ))}
           </div>
-          {item.employees?.length>0&&<div style={{marginBottom:'8px'}}><p style={{margin:'0 0 4px',fontSize:'0.68rem',color:T.textMuted}}>{t.employees}</p>{item.employees.map(e=>(<div key={e.id} style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem',padding:'5px 10px',background:T.surface2,borderRadius:'8px',marginBottom:'2px'}}><span style={{color:T.text}}>{e.name}</span><span style={{color:T.gold,fontWeight:'600'}}>{fmtC(e.salary,lang)}</span></div>))}</div>}
+          {item.employees?.length>0&&<div style={{marginBottom:'8px'}}><div style={{display:'flex',justifyContent:'space-between',margin:'0 0 4px'}}><p style={{margin:0,fontSize:'0.68rem',color:T.textMuted}}>{t.employees} ({item.employees.length})</p><p style={{margin:0,fontSize:'0.68rem',color:T.textMuted}}>{t.totalSalaries}: <strong style={{color:T.gold}}>{fmtC(item.employees.reduce((s,e)=>s+(Number(e.salary)||0),0),lang)}</strong></p></div>{item.employees.map(e=>(<div key={e.id} style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem',padding:'5px 10px',background:T.surface2,borderRadius:'8px',marginBottom:'2px'}}><span style={{color:T.text}}>{e.name}</span><span style={{color:T.gold,fontWeight:'600'}}>{fmtC(Number(e.salary)||0,lang)}</span></div>))}</div>}
           {item.notes&&<p style={{fontSize:'0.7rem',color:T.textMuted,fontStyle:'italic',margin:'0 0 8px'}}>"{item.notes}"</p>}
           <div style={{display:'flex',gap:'6px'}}><SmBtn onClick={()=>openEdit(item)} label={t.edit} icon={Pencil} color={T.info} T={T}/>{canDelete&&<SmBtn onClick={()=>setConfirm(item.id)} label={t.delete} icon={Trash2} color={T.danger} T={T}/>}</div>
         </div>
@@ -821,26 +874,41 @@ function CompaniesPage({data,setData,lang,t,T,logActivity,canDelete}){
   );
 }
 
+function loanSummary(loan){
+  const inst=loan?.monthlyInstallment||0, total=loan?.totalMonths||0, dp=loan?.downPayment||0;
+  const rem=Math.max(0,Math.min(loan?.remainingMonths||0, total>0?total:(loan?.remainingMonths||0)));
+  const hasLoan=inst>0||rem>0||dp>0;
+  const paidMonths=total>0?Math.max(0,total-rem):0;
+  const remainingAmount=rem*inst;
+  const paidAmount=dp+paidMonths*inst;
+  const totalCost=dp+total*inst;
+  const progress=total>0?Math.round((paidMonths/total)*100):0;
+  return {hasLoan,inst,total,rem,dp,paidMonths,remainingAmount,paidAmount,totalCost,progress};
+}
 function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete}){
-  const [modal,setModal]=useState(null),[confirm,setConfirm]=useState(null),[form,setForm]=useState({}),[errors,setErrors]=useState({});
+  const [modal,setModal]=useState(null),[confirm,setConfirm]=useState(null),[form,setForm]=useState({}),[errors,setErrors]=useState({}),[details,setDetails]=useState(null);
   const items=data.vehicles||[];
-  const openAdd=()=>{setForm({name:'',type:'',plateNumber:'',year:new Date().getFullYear(),value:'',insurance:{company:'',expiryDate:'',amount:''},registration:{expiryDate:'',amount:''},loan:{amount:'',monthlyInstallment:'',nextDue:'',remainingMonths:''},notes:''});setErrors({});setModal('add');};
+  const openAdd=()=>{setForm({name:'',type:'',plateNumber:'',year:new Date().getFullYear(),value:'',insurance:{company:'',expiryDate:'',amount:''},registration:{expiryDate:'',amount:''},loan:{downPayment:'',monthlyInstallment:'',totalMonths:'',remainingMonths:'',nextDue:''},notes:''});setErrors({});setModal('add');};
   const openEdit=item=>{setForm({...item,value:String(item.value)});setErrors({});setModal({edit:item});};
-  const save=()=>{const errs=validate([['name',form.name],['type',form.type],['value',form.value]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,value:Number(form.value)||0,insurance:{...form.insurance,amount:Number(form.insurance?.amount)||0},registration:{...form.registration,amount:Number(form.registration?.amount)||0},loan:{...form.loan,amount:Number(form.loan?.amount)||0,monthlyInstallment:Number(form.loan?.monthlyInstallment)||0,remainingMonths:Number(form.loan?.remainingMonths)||0}};setData(d=>({...d,vehicles:modal==='add'?[...(d.vehicles||[]),entry]:(d.vehicles||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.vehicles,`"${entry.name}"`);setModal(null);};
+  const save=()=>{const errs=validate([['name',form.name],['type',form.type],['value',form.value]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,value:Number(form.value)||0,insurance:{...form.insurance,amount:Number(form.insurance?.amount)||0},registration:{...form.registration,amount:Number(form.registration?.amount)||0},loan:{...form.loan,downPayment:Number(form.loan?.downPayment)||0,monthlyInstallment:Number(form.loan?.monthlyInstallment)||0,totalMonths:Number(form.loan?.totalMonths)||0,remainingMonths:Number(form.loan?.remainingMonths)||0}};setData(d=>({...d,vehicles:modal==='add'?[...(d.vehicles||[]),entry]:(d.vehicles||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.vehicles,`"${entry.name}"`);setModal(null);};
   const del=id=>{const item=items.find(x=>x.id===id);setData(d=>({...d,vehicles:d.vehicles.filter(x=>x.id!==id)}));logActivity(t.deletedAction,t.vehicles,`"${item?.name}"`);setConfirm(null);};
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><p style={{margin:0,fontSize:'0.78rem',color:T.textMuted}}>{fmtC(items.reduce((s,v)=>s+v.value,0),lang)}</p><AddBtn onClick={openAdd} label={t.add} T={T}/></div>
       {items.length===0&&<EmptyState icon="🚗" title={lang==='ar'?'لا توجد مركبات':'No vehicles yet'} subtitle={lang==='ar'?'سجّل سياراتك لمتابعة التأمين والأقساط':'Register vehicles to track insurance and installments'} T={T}/>}
-      {items.map(item=>{const di=daysUntil(item.insurance?.expiryDate);const dl=item.loan?.amount>0?daysUntil(item.loan?.nextDue):null;return(
+      {items.map(item=>{const di=daysUntil(item.insurance?.expiryDate);const L=loanSummary(item.loan);const dl=L.hasLoan?daysUntil(item.loan?.nextDue):null;return(
         <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:'10px'}}><div><h4 style={{margin:0,color:T.text,fontWeight:'700'}}>{item.name}</h4><p style={{margin:'2px 0 0',fontSize:'0.73rem',color:T.textMuted}}>{item.type} • {item.year} • {item.plateNumber}</p></div><Badge color={T.gold}>{fmtC(item.value,lang)}</Badge></div>
           <div style={{background:T.surface2,borderRadius:'12px',padding:'10px',marginBottom:'10px',display:'flex',flexDirection:'column',gap:'5px'}}>
-            <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem'}}><span style={{color:T.textMuted}}>{t.insurance}</span><span style={{color:di!==null&&di<=30?T.warning:T.text,fontWeight:'500'}}>{fmtDate(item.insurance?.expiryDate,lang)}{di!==null&&di<=30?' ⚠️':''}</span></div>
-            <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem'}}><span style={{color:T.textMuted}}>{t.registration}</span><span style={{color:T.text}}>{fmtDate(item.registration?.expiryDate,lang)}</span></div>
-            {item.loan?.amount>0&&<><div style={{height:'1px',background:T.border,margin:'2px 0'}}/><div style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem'}}><span style={{color:T.textMuted}}>{t.installment}</span><span style={{color:T.danger,fontWeight:'700'}}>{fmtC(item.loan.monthlyInstallment,lang)}</span></div><div style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem'}}><span style={{color:T.textMuted}}>{t.nextDue}</span><span style={{color:dl!==null&&dl<=14?T.danger:T.text}}>{fmtDate(item.loan?.nextDue,lang)}</span></div></>}
+            {L.hasLoan?(<>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem'}}><span style={{color:T.textMuted}}>{t.installment}</span><span style={{color:T.danger,fontWeight:'700'}}>{fmtC(L.inst,lang)} / {lang==='ar'?'شهر':'mo'}</span></div>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem'}}><span style={{color:T.textMuted}}>{t.remainingMonths}</span><span style={{color:T.text,fontWeight:'600'}}>{L.rem}{L.total>0?` / ${L.total}`:''} {lang==='ar'?'قسط':''}</span></div>
+              {L.total>0&&<div style={{height:'6px',borderRadius:'3px',background:T.border,overflow:'hidden',marginTop:'2px'}}><div style={{width:`${L.progress}%`,height:'100%',background:`linear-gradient(90deg,${T.gold},${T.goldLight})`}}/></div>}
+            </>):(
+              <div style={{fontSize:'0.74rem',color:T.textDim,textAlign:'center'}}>{t.noInstallment}</div>
+            )}
           </div>
-          <div style={{display:'flex',gap:'6px'}}><SmBtn onClick={()=>openEdit(item)} label={t.edit} icon={Pencil} color={T.info} T={T}/>{canDelete&&<SmBtn onClick={()=>setConfirm(item.id)} label={t.delete} icon={Trash2} color={T.danger} T={T}/>}</div>
+          <div style={{display:'flex',gap:'6px'}}><SmBtn onClick={()=>setDetails(item)} label={t.viewDetails} icon={Eye} color={T.gold} T={T}/><SmBtn onClick={()=>openEdit(item)} label={t.edit} icon={Pencil} color={T.info} T={T}/>{canDelete&&<SmBtn onClick={()=>setConfirm(item.id)} label="" icon={Trash2} color={T.danger} T={T}/>}</div>
         </div>
       );})}
       {modal&&<Modal title={modal==='add'?`${t.add} ${t.vehicles}`:t.edit} onClose={()=>setModal(null)} T={T}>
@@ -862,16 +930,56 @@ function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete}){
           <Field label={t.regExpiry} T={T}><Inp type="date" value={form.registration?.expiryDate} onChange={e=>setForm(f=>({...f,registration:{...f.registration,expiryDate:e.target.value}})) } T={T}/></Field>
           <Field label={lang==='ar'?'الرسوم':'Fee'} T={T}><Inp type="number" value={form.registration?.amount} onChange={e=>setForm(f=>({...f,registration:{...f.registration,amount:e.target.value}})) } T={T}/></Field>
         </div>
-        <SectionHeader title={`💳 ${t.installment} (${lang==='ar'?'اتركه فارغاً إن لا يوجد':'leave empty if none'})`} T={T}/>
+        <SectionHeader title={`💳 ${t.installmentSummary} (${lang==='ar'?'اتركه فارغاً إن لا يوجد':'leave empty if none'})`} T={T}/>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-          <Field label={t.loanAmount} T={T}><Inp type="number" value={form.loan?.amount} onChange={e=>setForm(f=>({...f,loan:{...f.loan,amount:e.target.value}})) } T={T}/></Field>
+          <Field label={t.downPayment} T={T}><Inp type="number" value={form.loan?.downPayment} onChange={e=>setForm(f=>({...f,loan:{...f.loan,downPayment:e.target.value}})) } T={T}/></Field>
           <Field label={t.installment} T={T}><Inp type="number" value={form.loan?.monthlyInstallment} onChange={e=>setForm(f=>({...f,loan:{...f.loan,monthlyInstallment:e.target.value}})) } T={T}/></Field>
-          <Field label={t.nextDue} T={T}><Inp type="date" value={form.loan?.nextDue} onChange={e=>setForm(f=>({...f,loan:{...f.loan,nextDue:e.target.value}})) } T={T}/></Field>
+          <Field label={t.totalInstallments} T={T}><Inp type="number" value={form.loan?.totalMonths} onChange={e=>setForm(f=>({...f,loan:{...f.loan,totalMonths:e.target.value}})) } T={T}/></Field>
           <Field label={t.remainingMonths} T={T}><Inp type="number" value={form.loan?.remainingMonths} onChange={e=>setForm(f=>({...f,loan:{...f.loan,remainingMonths:e.target.value}})) } T={T}/></Field>
+          <Field label={t.nextDue} T={T}><Inp type="date" value={form.loan?.nextDue} onChange={e=>setForm(f=>({...f,loan:{...f.loan,nextDue:e.target.value}})) } T={T}/></Field>
         </div>
         <Field label={t.notes}><Ta value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} T={T}/></Field>
         <SaveBtn onClick={save} label={t.save} T={T}/><CancelBtn onClick={()=>setModal(null)} label={t.cancel} T={T}/>
       </Modal>}
+      {details&&(()=>{const L=loanSummary(details.loan);const di=daysUntil(details.insurance?.expiryDate);const Row=({l,v,c})=>(<div style={{display:'flex',justifyContent:'space-between',fontSize:'0.78rem',padding:'2px 0'}}><span style={{color:T.textMuted}}>{l}</span><span style={{color:c||T.text,fontWeight:'600'}}>{v}</span></div>);return(
+        <Modal title={`🚗 ${details.name}`} onClose={()=>setDetails(null)} T={T}>
+          <p style={{margin:'0 0 12px',fontSize:'0.76rem',color:T.textMuted}}>{details.type} • {details.year} • {details.plateNumber}</p>
+          <div style={{background:T.surface2,borderRadius:'12px',padding:'12px',marginBottom:'10px'}}>
+            <Row l={`${t.value} (${t.sar})`} v={fmtC(details.value,lang)} c={T.gold}/>
+          </div>
+          <SectionHeader title={`🛡️ ${t.insurance}`} T={T}/>
+          <div style={{background:T.surface2,borderRadius:'12px',padding:'12px',marginBottom:'10px'}}>
+            <Row l={lang==='ar'?'الشركة':'Company'} v={details.insurance?.company||'—'}/>
+            <Row l={t.insExpiry} v={fmtDate(details.insurance?.expiryDate,lang)} c={di!==null&&di<=30?T.warning:T.text}/>
+            <Row l={t.annualPremium} v={fmtC(details.insurance?.amount||0,lang)}/>
+          </div>
+          <SectionHeader title={`📋 ${t.registration}`} T={T}/>
+          <div style={{background:T.surface2,borderRadius:'12px',padding:'12px',marginBottom:'10px'}}>
+            <Row l={t.regExpiry} v={fmtDate(details.registration?.expiryDate,lang)}/>
+            <Row l={t.annualFee} v={fmtC(details.registration?.amount||0,lang)}/>
+          </div>
+          <SectionHeader title={`💳 ${t.installmentSummary}`} T={T}/>
+          {L.hasLoan?(
+          <div style={{background:T.surface2,borderRadius:'12px',padding:'12px'}}>
+            <Row l={t.downPayment} v={fmtC(L.dp,lang)}/>
+            <Row l={t.installment} v={`${fmtC(L.inst,lang)} / ${lang==='ar'?'شهر':'mo'}`} c={T.danger}/>
+            <Row l={t.nextDue} v={fmtDate(details.loan?.nextDue,lang)}/>
+            <div style={{height:'1px',background:T.border,margin:'6px 0'}}/>
+            <Row l={t.totalInstallments} v={`${L.total} ${lang==='ar'?'قسط':'mo'}`}/>
+            <Row l={t.paidInstallments} v={`${L.paidMonths} ${lang==='ar'?'قسط':'mo'}`} c={T.success}/>
+            <Row l={t.remainingMonths} v={`${L.rem} ${lang==='ar'?'قسط':'mo'}`} c={T.warning}/>
+            <div style={{height:'1px',background:T.border,margin:'6px 0'}}/>
+            <Row l={t.paidAmount} v={fmtC(L.paidAmount,lang)} c={T.success}/>
+            <Row l={t.remainingAmount} v={fmtC(L.remainingAmount,lang)} c={T.danger}/>
+            <Row l={t.totalCost} v={fmtC(L.totalCost,lang)} c={T.gold}/>
+            {L.total>0&&<div style={{marginTop:'8px'}}><div style={{height:'8px',borderRadius:'4px',background:T.border,overflow:'hidden'}}><div style={{width:`${L.progress}%`,height:'100%',background:`linear-gradient(90deg,${T.gold},${T.goldLight})`}}/></div><p style={{margin:'4px 0 0',fontSize:'0.7rem',color:T.textMuted,textAlign:'center'}}>{L.progress}% {lang==='ar'?'مكتمل':'completed'}</p></div>}
+          </div>
+          ):(<p style={{color:T.textDim,fontSize:'0.8rem',textAlign:'center',padding:'10px'}}>{t.noInstallment}</p>)}
+          {details.notes&&<><SectionHeader title={`📝 ${t.notes}`} T={T}/><p style={{color:T.text,fontSize:'0.82rem',background:T.surface2,borderRadius:'12px',padding:'12px'}}>{details.notes}</p></>}
+          <div style={{height:'8px'}}/>
+          <CancelBtn onClick={()=>setDetails(null)} label={lang==='ar'?'إغلاق':'Close'} T={T}/>
+        </Modal>
+      );})()}
       {confirm&&<Confirm t={t} onConfirm={()=>del(confirm)} onCancel={()=>setConfirm(null)} T={T}/>}
     </div>
   );
@@ -1227,7 +1335,7 @@ function ActivityLogPage({data,lang,t,T}){
             <div style={{display:'flex',alignItems:'center',gap:'5px',flexWrap:'wrap'}}><span style={{fontSize:'0.76rem',fontWeight:'700',color:T.text}}>{log.userName}</span><Badge color={c}>{log.action}</Badge><span style={{fontSize:'0.68rem',color:T.textMuted}}>{lang==='ar'?'في':'in'} {log.module}</span></div>
             <p style={{margin:'2px 0 0',fontSize:'0.7rem',color:T.textMuted,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{log.description}</p>
           </div>
-          <div style={{textAlign:'end',flexShrink:0}}><p style={{margin:0,fontSize:'0.64rem',color:T.textMuted}}>{dt.toLocaleDateString(lang==='ar'?'ar-SA':'en-US')}</p><p style={{margin:0,fontSize:'0.62rem',color:T.textDim}}>{dt.toLocaleTimeString(lang==='ar'?'ar-SA':'en-US',{hour:'2-digit',minute:'2-digit'})}</p></div>
+          <div style={{textAlign:'end',flexShrink:0}}><p style={{margin:0,fontSize:'0.64rem',color:T.textMuted}}>{fmtDate(dt,lang)}</p><p style={{margin:0,fontSize:'0.62rem',color:T.textDim}}>{dt.toLocaleTimeString(lang==='ar'?'ar-SA':'en-US',{hour:'2-digit',minute:'2-digit'})}</p></div>
         </div>
       );})}
     </div>
@@ -1238,6 +1346,7 @@ function ActivityLogPage({data,lang,t,T}){
 export default function App(){
   const [lang,setLang]=useState('ar');
   const [isDark,setIsDark]=useState(true);
+  const [cal,setCal]=useState(()=>{try{return localStorage.getItem('calendarPref')||'gregory';}catch{return 'gregory';}});
   const [activePage,setActivePage]=useState('dashboard');
   const [navOpen,setNavOpen]=useState(false);
   const [blockedReason,setBlockedReason]=useState(null); // 'inactive' | 'unauthorized'
@@ -1249,6 +1358,8 @@ export default function App(){
   const saveTimer=useRef(null);
   const t=TR[lang];
   const T=isDark?DARK:LIGHT;
+  DATE_CAL=cal;   // applied synchronously before children render
+  const toggleCal=()=>setCal(c=>{const n=c==='hijri'?'gregory':'hijri';try{localStorage.setItem('calendarPref',n);}catch{}return n;});
 
   useEffect(()=>{
     const unsub=onAuthStateChanged(auth,async fbUser=>{
@@ -1614,6 +1725,39 @@ export default function App(){
                     </div>
                   );
                 })}
+
+                {/* Divider before settings */}
+                <div style={{height:'1px',background:T.border,margin:'4px 0'}}/>
+
+                {/* Settings: calendar */}
+                <button onClick={toggleCal} style={{
+                  display:'flex',alignItems:'center',gap:'10px',
+                  width:'100%',padding:'10px 10px',borderRadius:'12px',border:'none',
+                  background:'transparent',cursor:'pointer',fontFamily:'inherit',
+                  textAlign:lang==='ar'?'right':'left',
+                }}>
+                  <div style={{
+                    width:'32px',height:'32px',borderRadius:'9px',flexShrink:0,
+                    background:T.info+'18',display:'flex',alignItems:'center',justifyContent:'center',
+                    border:`1px solid ${T.info}25`,
+                  }}>
+                    <Calendar size={15} color={T.info}/>
+                  </div>
+                  <span style={{flex:1,fontSize:'0.88rem',fontWeight:'500',color:T.text}}>
+                    {lang==='ar'?'التقويم':'Calendar'}
+                  </span>
+                  <span style={{
+                    display:'flex',gap:'2px',background:T.surface2,borderRadius:'9px',padding:'2px',
+                  }}>
+                    {[['gregory',lang==='ar'?'ميلادي':'Greg.'],['hijri',lang==='ar'?'هجري':'Hijri']].map(([v,l])=>(
+                      <span key={v} style={{
+                        padding:'4px 10px',borderRadius:'7px',fontSize:'0.72rem',fontWeight:'700',
+                        background: cal===v ? T.gold : 'transparent',
+                        color: cal===v ? '#fff' : T.textMuted,
+                      }}>{l}</span>
+                    ))}
+                  </span>
+                </button>
 
                 {/* Divider before sign out */}
                 <div style={{height:'1px',background:T.border,margin:'4px 0'}}/>
