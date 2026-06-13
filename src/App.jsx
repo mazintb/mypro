@@ -196,7 +196,7 @@ function buildSampleData(){
     ],
     vehicles:[
       {id:genId(),name:'تويوتا لاند كروزر 2022',type:'SUV',plateNumber:'أ ب ج 1234',year:2022,value:280000,insurance:{company:'التعاونية',expiryDate:'2025-09-15',amount:4500},registration:{expiryDate:'2025-11-30',amount:900},loan:{downPayment:0,monthlyInstallment:0,totalMonths:0,remainingMonths:0,nextDue:''},notes:''},
-      {id:genId(),name:'مرسيدس E-Class 2023',type:'Sedan',plateNumber:'د هـ و 5678',year:2023,value:320000,insurance:{company:'ولاء',expiryDate:'2026-03-20',amount:6200},registration:{expiryDate:'2026-03-20',amount:1100},loan:{downPayment:60000,monthlyInstallment:5500,totalMonths:48,remainingMonths:28,nextDue:'2025-06-05'},notes:''},
+      {id:genId(),name:'مرسيدس E-Class 2023',type:'Sedan',plateNumber:'د هـ و 5678',year:2023,value:320000,insurance:{company:'ولاء',expiryDate:'2026-03-20',amount:6200},registration:{expiryDate:'2026-03-20',amount:1100},financing:{type:'installment',purchasePrice:320000,downPayment:60000,balanceToInstall:260000,monthlyInstallment:5417,totalMonths:48,payments:[{id:genId(),month:1,dueDate:'2025-04-15',amount:5417,method:'bank',status:'paid',paidAmount:5417,pendingAmount:0,date:'2025-04-15'},{id:genId(),month:2,dueDate:'2025-05-15',amount:5417,method:'bank',status:'paid',paidAmount:5417,pendingAmount:0,date:'2025-05-15'},{id:genId(),month:3,dueDate:'2025-06-15',amount:5417,method:'bank',status:'paid',paidAmount:5417,pendingAmount:0,date:'2025-06-15'},{id:genId(),month:4,dueDate:'2025-07-15',amount:5417,method:'cash',status:'partial',paidAmount:3000,pendingAmount:2417,date:'2025-07-18'},{id:genId(),month:5,dueDate:'2025-08-15',amount:5417,method:'bank',status:'pending',paidAmount:0,pendingAmount:5417,date:null}]},notes:''},
     ],
     investments:[
       {id:genId(),name:'محفظة تداول السعودية',type:'stocks',purchasePrice:150000,currentValue:178000,purchaseDate:'2023-01-15',notes:''},
@@ -486,6 +486,51 @@ function SubTabs({tabs,active,onChange,T}){
     </div>
   );
 }
+// ═══ INSTALLMENT FINANCING HELPERS ═══
+// دعم كلا النموذجين: loan (قديم) و financing (جديد)
+function calculateInstallmentStatus(financing) {
+  // إذا لم يوجد تمويل بالكامل
+  if(!financing)return null;
+
+  // النموذج الجديد: financing.payments
+  if(financing.payments&&Array.isArray(financing.payments)&&financing.payments.length>0){
+    const payments=financing.payments;
+    const paid=payments.filter(p=>p.status==='paid'||p.status==='partial').reduce((s,p)=>s+num(p.paidAmount),0);
+    const pending=payments.filter(p=>p.status==='partial').reduce((s,p)=>s+num(p.pendingAmount),0);
+    const overdue=payments.filter(p=>p.status==='late').reduce((s,p)=>s+num(p.pendingAmount),0);
+    const remaining=num(financing.balanceToInstall)-paid;
+    const monthsCompleted=payments.filter(p=>p.status==='paid'||p.status==='partial').length;
+    const monthsRemaining=num(financing.totalMonths)-monthsCompleted;
+    const monthlyObligation=num(financing.monthlyInstallment);
+    return{
+      totalBalance:num(financing.balanceToInstall),
+      totalPaid:paid+num(financing.downPayment),
+      remaining,pending,overdue,
+      monthsCompleted,monthsRemaining,monthlyObligation,
+      totalMonths:num(financing.totalMonths),
+      progress:Math.round((monthsCompleted/(num(financing.totalMonths)||1))*100),
+      downPayment:num(financing.downPayment)
+    };
+  }
+
+  // النموذج القديم: financing.remainingMonths يدويّ (للتوافقية)
+  if(num(financing.monthlyInstallment)>0||num(financing.balanceToInstall)>0){
+    const dp=num(financing.downPayment);
+    const inst=num(financing.monthlyInstallment);
+    const total=num(financing.totalMonths);
+    const rem=Math.max(0,Math.min(num(financing.remainingMonths||0),total||0));
+    const hasLoan=inst>0||rem>0||dp>0;
+    const paidMonths=total>0?Math.max(0,total-rem):0;
+    const remainingAmount=rem*inst;
+    const paidAmount=dp+paidMonths*inst;
+    const totalCost=dp+total*inst;
+    const progress=total>0?Math.round((paidMonths/total)*100):0;
+    return{hasLoan,inst,total,rem,dp,paidMonths,remainingAmount,paidAmount,totalCost,progress};
+  }
+
+  return null;
+}
+
 // ═══ DASHBOARD ═══
 function Dashboard({data,lang,t,T}){
   const re=data.realEstate||[],co=data.companies||[],ve=data.vehicles||[],iv=data.investments||[],tr=data.transactions||[];
@@ -499,9 +544,9 @@ function Dashboard({data,lang,t,T}){
 
   // Monthly expenses: company costs + vehicle installments + recurring operations
   const companyExp=co.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+num(c.monthlyExpense),0);
-  const loanExp=ve.reduce((s,v)=>s+num(v.loan?.monthlyInstallment),0);
+  const financeExp=ve.reduce((s,v)=>{const F=calculateInstallmentStatus(v.financing);return s+(F?.monthlyObligation||num(v.loan?.monthlyInstallment)||0);},0);
   const recurringOps=(data.operations||[]).filter(o=>o.frequency==='monthly'&&o.status!=='paid').reduce((s,o)=>s+num(o.amount),0);
-  const mExp=companyExp+loanExp+recurringOps;
+  const mExp=companyExp+financeExp+recurringOps;
   const alerts=[];
   re.forEach(p=>{
     const units=p.hasUnits?p.units:(p.status==='occupied'?[p]:[]);
@@ -528,11 +573,11 @@ function Dashboard({data,lang,t,T}){
     return{name:mn,دخل:inc,مصاريف:expTr+expManual};
   });
   // Aggregated installment liabilities (vehicles + installment-type operations)
-  const vehLoans=ve.map(v=>loanSummary(v.loan)).filter(L=>L.hasLoan);
+  const vehFinance=ve.map(v=>{const F=calculateInstallmentStatus(v.financing);return F||{monthlyObligation:num(v.loan?.monthlyInstallment)||0,remaining:num(v.loan?.monthlyInstallment||0)*(num(v.loan?.remainingMonths)||0)};}).filter(F=>F?.monthlyObligation>0);
   const opInst=(data.operations||[]).filter(o=>o.type==='installment');
-  const liabMonthly=vehLoans.reduce((s,L)=>s+L.inst,0)+opInst.filter(o=>o.frequency==='monthly').reduce((s,o)=>s+num(o.amount),0);
-  const liabRemaining=vehLoans.reduce((s,L)=>s+L.remainingAmount,0)+opInst.reduce((s,o)=>s+num(o.remainingMonths)*num(o.amount),0);
-  const liabCount=vehLoans.length+opInst.length;
+  const liabMonthly=vehFinance.reduce((s,F)=>s+num(F.monthlyObligation),0)+opInst.filter(o=>o.frequency==='monthly').reduce((s,o)=>s+num(o.amount),0);
+  const liabRemaining=vehFinance.reduce((s,F)=>s+num(F.remaining),0)+opInst.reduce((s,o)=>s+num(o.remainingMonths)*num(o.amount),0);
+  const liabCount=vehFinance.length+opInst.length;
   // True net worth = assets minus outstanding obligations
   const netWorth=totalAssets-liabRemaining;
   const pieData=[{name:lang==='ar'?'عقارات':'Real Estate',value:re.reduce((s,p)=>s+num(p.value),0)},{name:lang==='ar'?'شركات':'Companies',value:co.reduce((s,c)=>s+num(c.capital),0)},{name:lang==='ar'?'مركبات':'Vehicles',value:ve.reduce((s,v)=>s+num(v.value),0)},{name:lang==='ar'?'استثمارات':'Investments',value:iv.reduce((s,i)=>s+num(i.currentValue),0)}].filter(d=>d.value>0);
@@ -690,13 +735,13 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete}){
   const [form,setForm]=useState({}),[unitForm,setUnitForm]=useState({}),[errors,setErrors]=useState({});
   const [paidFlash,setPaidFlash]=useState(null);
   const items=data.realEstate||[];const pt=lang==='ar'?PROP_T.ar:PROP_T.en;const ft=lang==='ar'?FREQ_T.ar:FREQ_T.en;
-  const openAdd=()=>{setForm({name:'',type:'',location:'',value:'',status:'',hasUnits:false,units:[],tenant:{name:'',phone:''},rent:{amount:'',frequency:'yearly',nextDue:'',lastPaid:''},contract:{startDate:'',endDate:''},notes:''});setErrors({});setModal('add');};
-  const openEdit=item=>{setForm({...item,value:String(item.value),rent:{...item.rent,amount:String(item.rent?.amount||'')}});setErrors({});setModal({edit:item});};
+  const openAdd=()=>{setForm({name:'',type:'',location:'',value:'',status:'',hasUnits:false,units:[],tenant:{name:'',phone:''},rent:{amount:'',frequency:'yearly',nextDue:'',lastPaid:''},contract:{startDate:'',endDate:''},financing:{type:'installment',purchasePrice:'',downPayment:'',balanceToInstall:'',monthlyInstallment:'',totalMonths:'',payments:[]},notes:''});setErrors({});setModal('add');};
+  const openEdit=item=>{setForm({...item,value:String(item.value),rent:{...item.rent,amount:String(item.rent?.amount||'')},financing:{...item.financing,purchasePrice:String(item.financing?.purchasePrice||''),downPayment:String(item.financing?.downPayment||''),balanceToInstall:String(item.financing?.balanceToInstall||''),monthlyInstallment:String(item.financing?.monthlyInstallment||''),totalMonths:String(item.financing?.totalMonths||'')}});setErrors({});setModal({edit:item});};
   const save=()=>{
     const errs=validate([['name',form.name],['type',form.type],['value',form.value,{positive:true}],['status',form.status]],t);
     const de=dateOrderError(form.contract?.startDate,form.contract?.endDate,t);if(de)errs.contractEnd=de;
     if(Object.keys(errs).length){setErrors(errs);return;}
-    const entry={...form,id:modal==='add'?genId():form.id,value:num(form.value),rent:{...form.rent,amount:num(form.rent?.amount)}};
+    const entry={...form,id:modal==='add'?genId():form.id,value:num(form.value),rent:{...form.rent,amount:num(form.rent?.amount)},financing:{...form.financing,purchasePrice:num(form.financing?.purchasePrice),downPayment:num(form.financing?.downPayment),balanceToInstall:num(form.financing?.balanceToInstall),monthlyInstallment:num(form.financing?.monthlyInstallment),totalMonths:num(form.financing?.totalMonths),payments:form.financing?.payments||[]}};
     setData(d=>({...d,realEstate:modal==='add'?[...(d.realEstate||[]),entry]:(d.realEstate||[]).map(x=>x.id===entry.id?entry:x)}));
     logActivity(modal==='add'?t.addedAction:t.editedAction,t.realEstate,`"${entry.name}"`);setModal(null);
   };
@@ -815,6 +860,13 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete}){
             <Field label={t.endDate} T={T} error={errors.contractEnd}><Inp type="date" value={form.contract?.endDate} onChange={e=>setForm(f=>({...f,contract:{...f.contract,endDate:e.target.value}})) } T={T} error={errors.contractEnd}/></Field>
           </div>
         </>}
+        <SectionHeader title={`💳 ${t.installmentSummary} (${lang==='ar'?'اتركه فارغاً إن لا يوجد':'leave empty if none'})`} T={T}/>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+          <Field label={t.purchasePrice} T={T}><Inp type="number" value={form.financing?.purchasePrice} onChange={e=>setForm(f=>({...f,financing:{...f.financing,purchasePrice:e.target.value,balanceToInstall:num(e.target.value)-num(f.financing?.downPayment||0)}})) } T={T}/></Field>
+          <Field label={t.downPayment} T={T}><Inp type="number" value={form.financing?.downPayment} onChange={e=>setForm(f=>({...f,financing:{...f.financing,downPayment:e.target.value,balanceToInstall:num(f.financing?.purchasePrice||0)-num(e.target.value)}})) } T={T}/></Field>
+          <Field label={t.totalInstallments} T={T}><Inp type="number" value={form.financing?.totalMonths} onChange={e=>setForm(f=>{const tm=num(e.target.value);const bal=num(f.financing?.balanceToInstall||0);return{...f,financing:{...f.financing,totalMonths:e.target.value,monthlyInstallment:tm>0?Math.round(bal/tm):0}}}) } T={T}/></Field>
+          <Field label={t.installment} T={T}><Inp type="number" value={form.financing?.monthlyInstallment} onChange={e=>setForm(f=>({...f,financing:{...f.financing,monthlyInstallment:e.target.value}})) } T={T}/></Field>
+        </div>
         <Field label={t.notes}><Ta value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} T={T}/></Field>
         <SaveBtn onClick={save} label={t.save} T={T}/>
         <CancelBtn onClick={()=>setModal(null)} label={t.cancel} T={T}/>
@@ -858,9 +910,9 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete}){
 function CompaniesPage({data,setData,lang,t,T,logActivity,canDelete}){
   const [modal,setModal]=useState(null),[confirm,setConfirm]=useState(null),[form,setForm]=useState({}),[errors,setErrors]=useState({});
   const items=data.companies||[];
-  const openAdd=()=>{setForm({name:'',type:'',companyStatus:'active',ownership:100,capital:'',monthlyRevenue:'',monthlyExpense:'',employees:[],notes:''});setErrors({});setModal('add');};
-  const openEdit=item=>{setForm({...item,capital:String(item.capital),monthlyRevenue:String(item.monthlyRevenue),monthlyExpense:String(item.monthlyExpense)});setErrors({});setModal({edit:item});};
-  const save=()=>{const errs=validate([['name',form.name],['capital',form.capital,{positive:true}],['monthlyRevenue',form.monthlyRevenue,{nonNegative:true,optional:true}],['monthlyExpense',form.monthlyExpense,{nonNegative:true,optional:true}]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,capital:num(form.capital),monthlyRevenue:num(form.monthlyRevenue),monthlyExpense:num(form.monthlyExpense),ownership:num(form.ownership),employees:(form.employees||[]).map(e=>({...e,salary:num(e.salary)}))};setData(d=>({...d,companies:modal==='add'?[...(d.companies||[]),entry]:(d.companies||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.companies,`"${entry.name}"`);setModal(null);};
+  const openAdd=()=>{setForm({name:'',type:'',companyStatus:'active',ownership:100,capital:'',monthlyRevenue:'',monthlyExpense:'',employees:[],financing:{type:'installment',purchasePrice:'',downPayment:'',balanceToInstall:'',monthlyInstallment:'',totalMonths:'',payments:[]},notes:''});setErrors({});setModal('add');};
+  const openEdit=item=>{setForm({...item,capital:String(item.capital),monthlyRevenue:String(item.monthlyRevenue),monthlyExpense:String(item.monthlyExpense),financing:{...item.financing,purchasePrice:String(item.financing?.purchasePrice||''),downPayment:String(item.financing?.downPayment||''),balanceToInstall:String(item.financing?.balanceToInstall||''),monthlyInstallment:String(item.financing?.monthlyInstallment||''),totalMonths:String(item.financing?.totalMonths||'')}});setErrors({});setModal({edit:item});};
+  const save=()=>{const errs=validate([['name',form.name],['capital',form.capital,{positive:true}],['monthlyRevenue',form.monthlyRevenue,{nonNegative:true,optional:true}],['monthlyExpense',form.monthlyExpense,{nonNegative:true,optional:true}]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,capital:num(form.capital),monthlyRevenue:num(form.monthlyRevenue),monthlyExpense:num(form.monthlyExpense),ownership:num(form.ownership),employees:(form.employees||[]).map(e=>({...e,salary:num(e.salary)})),financing:{...form.financing,purchasePrice:num(form.financing?.purchasePrice),downPayment:num(form.financing?.downPayment),balanceToInstall:num(form.financing?.balanceToInstall),monthlyInstallment:num(form.financing?.monthlyInstallment),totalMonths:num(form.financing?.totalMonths),payments:form.financing?.payments||[]}};setData(d=>({...d,companies:modal==='add'?[...(d.companies||[]),entry]:(d.companies||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.companies,`"${entry.name}"`);setModal(null);};
   const del=id=>{const item=items.find(x=>x.id===id);setData(d=>({...d,companies:d.companies.filter(x=>x.id!==id)}));logActivity(t.deletedAction,t.companies,`"${item?.name}"`);setConfirm(null);};
   const addEmp=()=>setForm(f=>({...f,employees:[...(f.employees||[]),{id:genId(),name:'',salary:''}]}));
   const remEmp=eid=>setForm(f=>({...f,employees:f.employees.filter(e=>e.id!==eid)}));
@@ -901,6 +953,13 @@ function CompaniesPage({data,setData,lang,t,T,logActivity,canDelete}){
         <SectionHeader title={t.employees} T={T}/>
         <div style={{display:'flex',justifyContent:'flex-end',marginBottom:'8px'}}><SmBtn onClick={addEmp} label={t.addEmployee} icon={Plus} color={T.gold} T={T}/></div>
         {(form.employees||[]).map(e=>(<div key={e.id} style={{display:'flex',gap:'6px',marginBottom:'6px',alignItems:'center'}}><input placeholder={lang==='ar'?'الاسم':'Name'} value={e.name} onChange={ev=>editEmp(e.id,'name',ev.target.value)} style={{flex:2,background:T.inputBg,border:`1px solid ${T.border}`,borderRadius:'10px',padding:'10px',color:T.text,fontSize:'0.85rem',fontFamily:'inherit',outline:'none'}}/><input placeholder={t.salary} type="number" value={e.salary} onChange={ev=>editEmp(e.id,'salary',ev.target.value)} style={{flex:1,background:T.inputBg,border:`1px solid ${T.border}`,borderRadius:'10px',padding:'10px',color:T.text,fontSize:'0.85rem',fontFamily:'inherit',outline:'none'}}/><button onClick={()=>remEmp(e.id)} style={{background:'none',border:'none',color:T.danger,cursor:'pointer',flexShrink:0}}><X size={14}/></button></div>))}
+        <SectionHeader title={`💳 ${t.installmentSummary} (${lang==='ar'?'اتركه فارغاً إن لا يوجد':'leave empty if none'})`} T={T}/>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+          <Field label={t.purchasePrice} T={T}><Inp type="number" value={form.financing?.purchasePrice} onChange={e=>setForm(f=>({...f,financing:{...f.financing,purchasePrice:e.target.value,balanceToInstall:num(e.target.value)-num(f.financing?.downPayment||0)}})) } T={T}/></Field>
+          <Field label={t.downPayment} T={T}><Inp type="number" value={form.financing?.downPayment} onChange={e=>setForm(f=>({...f,financing:{...f.financing,downPayment:e.target.value,balanceToInstall:num(f.financing?.purchasePrice||0)-num(e.target.value)}})) } T={T}/></Field>
+          <Field label={t.totalInstallments} T={T}><Inp type="number" value={form.financing?.totalMonths} onChange={e=>setForm(f=>{const tm=num(e.target.value);const bal=num(f.financing?.balanceToInstall||0);return{...f,financing:{...f.financing,totalMonths:e.target.value,monthlyInstallment:tm>0?Math.round(bal/tm):0}}}) } T={T}/></Field>
+          <Field label={t.installment} T={T}><Inp type="number" value={form.financing?.monthlyInstallment} onChange={e=>setForm(f=>({...f,financing:{...f.financing,monthlyInstallment:e.target.value}})) } T={T}/></Field>
+        </div>
         <Field label={t.notes}><Ta value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} T={T}/></Field>
         <SaveBtn onClick={save} label={t.save} T={T}/><CancelBtn onClick={()=>setModal(null)} label={t.cancel} T={T}/>
       </Modal>}
@@ -921,29 +980,29 @@ function loanSummary(loan){
   return {hasLoan,inst,total,rem,dp,paidMonths,remainingAmount,paidAmount,totalCost,progress};
 }
 function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete}){
-  const [modal,setModal]=useState(null),[confirm,setConfirm]=useState(null),[form,setForm]=useState({}),[errors,setErrors]=useState({}),[details,setDetails]=useState(null);
+  const [modal,setModal]=useState(null),[confirm,setConfirm]=useState(null),[form,setForm]=useState({}),[errors,setErrors]=useState({}),[details,setDetails]=useState(null),[paymentModal,setPaymentModal]=useState(null),[paymentForm,setPaymentForm]=useState({});
   const items=data.vehicles||[];
-  const openAdd=()=>{setForm({name:'',type:'',plateNumber:'',year:new Date().getFullYear(),value:'',insurance:{company:'',expiryDate:'',amount:''},registration:{expiryDate:'',amount:''},loan:{downPayment:'',monthlyInstallment:'',totalMonths:'',remainingMonths:'',nextDue:''},notes:''});setErrors({});setModal('add');};
-  const openEdit=item=>{setForm({...item,value:String(item.value)});setErrors({});setModal({edit:item});};
-  const save=()=>{const errs=validate([['name',form.name],['type',form.type],['value',form.value,{positive:true}]],t);if(Object.keys(errs).length){setErrors(errs);return;}const rm=Math.min(num(form.loan?.remainingMonths),num(form.loan?.totalMonths)||num(form.loan?.remainingMonths));const entry={...form,id:modal==='add'?genId():form.id,value:num(form.value),insurance:{...form.insurance,amount:num(form.insurance?.amount)},registration:{...form.registration,amount:num(form.registration?.amount)},loan:{...form.loan,downPayment:num(form.loan?.downPayment),monthlyInstallment:num(form.loan?.monthlyInstallment),totalMonths:num(form.loan?.totalMonths),remainingMonths:rm}};setData(d=>({...d,vehicles:modal==='add'?[...(d.vehicles||[]),entry]:(d.vehicles||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.vehicles,`"${entry.name}"`);setModal(null);};
+  const openAdd=()=>{setForm({name:'',type:'',plateNumber:'',year:new Date().getFullYear(),value:'',insurance:{company:'',expiryDate:'',amount:''},registration:{expiryDate:'',amount:''},financing:{type:'installment',purchasePrice:'',downPayment:'',balanceToInstall:'',monthlyInstallment:'',totalMonths:'',payments:[]},notes:''});setErrors({});setModal('add');};
+  const openEdit=item=>{setForm({...item,value:String(item.value),financing:{...item.financing,purchasePrice:String(item.financing?.purchasePrice||''),downPayment:String(item.financing?.downPayment||''),balanceToInstall:String(item.financing?.balanceToInstall||''),monthlyInstallment:String(item.financing?.monthlyInstallment||''),totalMonths:String(item.financing?.totalMonths||'')}});setErrors({});setModal({edit:item});};
+  const save=()=>{const errs=validate([['name',form.name],['type',form.type],['value',form.value,{positive:true}]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,value:num(form.value),insurance:{...form.insurance,amount:num(form.insurance?.amount)},registration:{...form.registration,amount:num(form.registration?.amount)},financing:{...form.financing,purchasePrice:num(form.financing?.purchasePrice),downPayment:num(form.financing?.downPayment),balanceToInstall:num(form.financing?.balanceToInstall),monthlyInstallment:num(form.financing?.monthlyInstallment),totalMonths:num(form.financing?.totalMonths),payments:form.financing?.payments||[]}};setData(d=>({...d,vehicles:modal==='add'?[...(d.vehicles||[]),entry]:(d.vehicles||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.vehicles,`"${entry.name}"`);setModal(null);};
   const del=id=>{const item=items.find(x=>x.id===id);setData(d=>({...d,vehicles:d.vehicles.filter(x=>x.id!==id)}));logActivity(t.deletedAction,t.vehicles,`"${item?.name}"`);setConfirm(null);};
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><p style={{margin:0,fontSize:'0.78rem',color:T.textMuted}}>{fmtC(items.reduce((s,v)=>s+num(v.value),0),lang)}</p><AddBtn onClick={openAdd} label={t.add} T={T}/></div>
       {items.length===0&&<EmptyState icon="🚗" title={lang==='ar'?'لا توجد مركبات':'No vehicles yet'} subtitle={lang==='ar'?'سجّل سياراتك لمتابعة التأمين والأقساط':'Register vehicles to track insurance and installments'} T={T}/>}
-      {items.map(item=>{const di=daysUntil(item.insurance?.expiryDate);const L=loanSummary(item.loan);const dl=L.hasLoan?daysUntil(item.loan?.nextDue):null;return(
+      {items.map(item=>{const di=daysUntil(item.insurance?.expiryDate);const F=calculateInstallmentStatus(item.financing);return(
         <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:'10px'}}><div><h4 style={{margin:0,color:T.text,fontWeight:'700'}}>{item.name}</h4><p style={{margin:'2px 0 0',fontSize:'0.73rem',color:T.textMuted}}>{item.type} • {item.year} • {item.plateNumber}</p></div><Badge color={T.gold}>{fmtC(item.value,lang)}</Badge></div>
           <div style={{background:T.surface2,borderRadius:'12px',padding:'10px',marginBottom:'10px',display:'flex',flexDirection:'column',gap:'5px'}}>
-            {L.hasLoan?(<>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem'}}><span style={{color:T.textMuted}}>{t.installment}</span><span style={{color:T.danger,fontWeight:'700'}}>{fmtC(L.inst,lang)} / {lang==='ar'?'شهر':'mo'}</span></div>
-              <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem'}}><span style={{color:T.textMuted}}>{t.remainingMonths}</span><span style={{color:T.text,fontWeight:'600'}}>{L.rem}{L.total>0?` / ${L.total}`:''} {lang==='ar'?'قسط':''}</span></div>
-              {L.total>0&&<div style={{height:'6px',borderRadius:'3px',background:T.border,overflow:'hidden',marginTop:'2px'}}><div style={{width:`${L.progress}%`,height:'100%',background:`linear-gradient(90deg,${T.gold},${T.goldLight})`}}/></div>}
+            {F?.monthlyObligation>0?(<>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem'}}><span style={{color:T.textMuted}}>{t.installment}</span><span style={{color:T.danger,fontWeight:'700'}}>{fmtC(F.monthlyObligation,lang)} / {lang==='ar'?'شهر':'mo'}</span></div>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.74rem'}}><span style={{color:T.textMuted}}>{t.remainingMonths}</span><span style={{color:T.text,fontWeight:'600'}}>{F.monthsRemaining}{F.totalMonths>0?` / ${F.totalMonths}`:''} {lang==='ar'?'قسط':''}</span></div>
+              {F.totalMonths>0&&<div style={{height:'6px',borderRadius:'3px',background:T.border,overflow:'hidden',marginTop:'2px'}}><div style={{width:`${F.progress}%`,height:'100%',background:`linear-gradient(90deg,${T.gold},${T.goldLight})`}}/></div>}
             </>):(
               <div style={{fontSize:'0.74rem',color:T.textDim,textAlign:'center'}}>{t.noInstallment}</div>
             )}
           </div>
-          <div style={{display:'flex',gap:'6px'}}><SmBtn onClick={()=>setDetails(item)} label={t.viewDetails} icon={Eye} color={T.gold} T={T}/><SmBtn onClick={()=>openEdit(item)} label={t.edit} icon={Pencil} color={T.info} T={T}/>{canDelete&&<SmBtn onClick={()=>setConfirm(item.id)} label="" icon={Trash2} color={T.danger} T={T}/>}</div>
+          <div style={{display:'flex',gap:'6px'}}>{F?.monthlyObligation>0&&<SmBtn onClick={()=>setPaymentModal(item.id)} label={lang==='ar'?'تسجيل قسط':'Pay'} icon={DollarSign} color={T.success} T={T}/>}<SmBtn onClick={()=>setDetails(item)} label={t.viewDetails} icon={Eye} color={T.gold} T={T}/><SmBtn onClick={()=>openEdit(item)} label={t.edit} icon={Pencil} color={T.info} T={T}/>{canDelete&&<SmBtn onClick={()=>setConfirm(item.id)} label="" icon={Trash2} color={T.danger} T={T}/>}</div>
         </div>
       );})}
       {modal&&<Modal title={modal==='add'?`${t.add} ${t.vehicles}`:t.edit} onClose={()=>setModal(null)} T={T}>
@@ -967,16 +1026,15 @@ function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete}){
         </div>
         <SectionHeader title={`💳 ${t.installmentSummary} (${lang==='ar'?'اتركه فارغاً إن لا يوجد':'leave empty if none'})`} T={T}/>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-          <Field label={t.downPayment} T={T}><Inp type="number" value={form.loan?.downPayment} onChange={e=>setForm(f=>({...f,loan:{...f.loan,downPayment:e.target.value}})) } T={T}/></Field>
-          <Field label={t.installment} T={T}><Inp type="number" value={form.loan?.monthlyInstallment} onChange={e=>setForm(f=>({...f,loan:{...f.loan,monthlyInstallment:e.target.value}})) } T={T}/></Field>
-          <Field label={t.totalInstallments} T={T}><Inp type="number" value={form.loan?.totalMonths} onChange={e=>setForm(f=>({...f,loan:{...f.loan,totalMonths:e.target.value}})) } T={T}/></Field>
-          <Field label={t.remainingMonths} T={T}><Inp type="number" value={form.loan?.remainingMonths} onChange={e=>setForm(f=>({...f,loan:{...f.loan,remainingMonths:e.target.value}})) } T={T}/></Field>
-          <Field label={t.nextDue} T={T}><Inp type="date" value={form.loan?.nextDue} onChange={e=>setForm(f=>({...f,loan:{...f.loan,nextDue:e.target.value}})) } T={T}/></Field>
+          <Field label={t.purchasePrice} T={T}><Inp type="number" value={form.financing?.purchasePrice} onChange={e=>setForm(f=>({...f,financing:{...f.financing,purchasePrice:e.target.value,balanceToInstall:num(e.target.value)-num(f.financing?.downPayment||0)}})) } T={T}/></Field>
+          <Field label={t.downPayment} T={T}><Inp type="number" value={form.financing?.downPayment} onChange={e=>setForm(f=>({...f,financing:{...f.financing,downPayment:e.target.value,balanceToInstall:num(f.financing?.purchasePrice||0)-num(e.target.value)}})) } T={T}/></Field>
+          <Field label={t.totalInstallments} T={T}><Inp type="number" value={form.financing?.totalMonths} onChange={e=>setForm(f=>{const tm=num(e.target.value);const bal=num(f.financing?.balanceToInstall||0);return{...f,financing:{...f.financing,totalMonths:e.target.value,monthlyInstallment:tm>0?Math.round(bal/tm):0}}}) } T={T}/></Field>
+          <Field label={t.installment} T={T}><Inp type="number" value={form.financing?.monthlyInstallment} onChange={e=>setForm(f=>({...f,financing:{...f.financing,monthlyInstallment:e.target.value}})) } T={T}/></Field>
         </div>
         <Field label={t.notes}><Ta value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} T={T}/></Field>
         <SaveBtn onClick={save} label={t.save} T={T}/><CancelBtn onClick={()=>setModal(null)} label={t.cancel} T={T}/>
       </Modal>}
-      {details&&(()=>{const L=loanSummary(details.loan);const di=daysUntil(details.insurance?.expiryDate);const Row=({l,v,c})=>(<div style={{display:'flex',justifyContent:'space-between',fontSize:'0.78rem',padding:'2px 0'}}><span style={{color:T.textMuted}}>{l}</span><span style={{color:c||T.text,fontWeight:'600'}}>{v}</span></div>);return(
+      {details&&(()=>{const F=calculateInstallmentStatus(details.financing);const di=daysUntil(details.insurance?.expiryDate);const Row=({l,v,c})=>(<div style={{display:'flex',justifyContent:'space-between',fontSize:'0.78rem',padding:'2px 0'}}><span style={{color:T.textMuted}}>{l}</span><span style={{color:c||T.text,fontWeight:'600'}}>{v}</span></div>);return(
         <Modal title={`🚗 ${details.name}`} onClose={()=>setDetails(null)} T={T}>
           <p style={{margin:'0 0 12px',fontSize:'0.76rem',color:T.textMuted}}>{details.type} • {details.year} • {details.plateNumber}</p>
           <div style={{background:T.surface2,borderRadius:'12px',padding:'12px',marginBottom:'10px'}}>
@@ -994,20 +1052,24 @@ function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete}){
             <Row l={t.annualFee} v={fmtC(details.registration?.amount||0,lang)}/>
           </div>
           <SectionHeader title={`💳 ${t.installmentSummary}`} T={T}/>
-          {L.hasLoan?(
+          {F?.monthlyObligation>0?(
           <div style={{background:T.surface2,borderRadius:'12px',padding:'12px'}}>
-            <Row l={t.downPayment} v={fmtC(L.dp,lang)}/>
-            <Row l={t.installment} v={`${fmtC(L.inst,lang)} / ${lang==='ar'?'شهر':'mo'}`} c={T.danger}/>
-            <Row l={t.nextDue} v={fmtDate(details.loan?.nextDue,lang)}/>
+            <Row l={t.purchasePrice} v={fmtC(F.totalBalance+F.downPayment,lang)} c={T.info}/>
+            <Row l={t.downPayment} v={fmtC(F.downPayment,lang)}/>
+            <Row l={t.installment} v={`${fmtC(F.monthlyObligation,lang)} / ${lang==='ar'?'شهر':'mo'}`} c={T.danger}/>
             <div style={{height:'1px',background:T.border,margin:'6px 0'}}/>
-            <Row l={t.totalInstallments} v={`${L.total} ${lang==='ar'?'قسط':'mo'}`}/>
-            <Row l={t.paidInstallments} v={`${L.paidMonths} ${lang==='ar'?'قسط':'mo'}`} c={T.success}/>
-            <Row l={t.remainingMonths} v={`${L.rem} ${lang==='ar'?'قسط':'mo'}`} c={T.warning}/>
+            <Row l={t.totalInstallments} v={`${F.totalMonths} ${lang==='ar'?'قسط':'mo'}`}/>
+            <Row l={t.paidInstallments} v={`${F.monthsCompleted} ${lang==='ar'?'قسط':'mo'}`} c={T.success}/>
+            <Row l={t.remainingMonths} v={`${F.monthsRemaining} ${lang==='ar'?'قسط':'mo'}`} c={F.monthsRemaining>0?T.warning:T.success}/>
             <div style={{height:'1px',background:T.border,margin:'6px 0'}}/>
-            <Row l={t.paidAmount} v={fmtC(L.paidAmount,lang)} c={T.success}/>
-            <Row l={t.remainingAmount} v={fmtC(L.remainingAmount,lang)} c={T.danger}/>
-            <Row l={t.totalCost} v={fmtC(L.totalCost,lang)} c={T.gold}/>
-            {L.total>0&&<div style={{marginTop:'8px'}}><div style={{height:'8px',borderRadius:'4px',background:T.border,overflow:'hidden'}}><div style={{width:`${L.progress}%`,height:'100%',background:`linear-gradient(90deg,${T.gold},${T.goldLight})`}}/></div><p style={{margin:'4px 0 0',fontSize:'0.7rem',color:T.textMuted,textAlign:'center'}}>{L.progress}% {lang==='ar'?'مكتمل':'completed'}</p></div>}
+            <Row l={t.paidAmount} v={fmtC(F.totalPaid,lang)} c={T.success}/>
+            <Row l={t.remainingAmount} v={fmtC(F.remaining,lang)} c={F.remaining>0?T.danger:T.success}/>
+            {F.overdue>0&&<Row l={lang==='ar'?'المتأخر':'Overdue'} v={fmtC(F.overdue,lang)} c={T.danger}/>}
+            {F.pending>0&&<Row l={lang==='ar'?'المعلّق':'Pending'} v={fmtC(F.pending,lang)} c={T.warning}/>}
+            <div style={{height:'1px',background:T.border,margin:'6px 0'}}/>
+            <Row l={t.totalCost} v={fmtC(F.totalBalance+F.downPayment,lang)} c={T.gold}/>
+            {F.totalMonths>0&&<div style={{marginTop:'8px'}}><div style={{height:'8px',borderRadius:'4px',background:T.border,overflow:'hidden'}}><div style={{width:`${F.progress}%`,height:'100%',background:`linear-gradient(90deg,${T.gold},${T.goldLight})`}}/></div><p style={{margin:'4px 0 0',fontSize:'0.7rem',color:T.textMuted,textAlign:'center'}}>{F.progress}% {lang==='ar'?'مكتمل':'completed'}</p></div>}
+            {(details.financing?.payments||[]).length>0&&<><SectionHeader title={lang==='ar'?'سجل الدفعات':'Payment History'} T={T}/><div style={{fontSize:'0.72rem',maxHeight:'300px',overflowY:'auto'}}>{details.financing.payments.map((p,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:`1px solid ${T.border}`}}><span style={{color:T.textMuted}}>{lang==='ar'?'قسط':'Month'} {p.month}</span><span style={{color:T.text}}>{fmtC(p.amount,lang)}</span><span style={{color:p.status==='paid'?T.success:p.status==='late'?T.danger:T.warning,fontWeight:'600'}}>{lang==='ar'?(p.status==='paid'?'مدفوع':p.status==='partial'?'جزئي':p.status==='late'?'متأخر':'معلّق'):(p.status==='paid'?'Paid':p.status==='partial'?'Partial':p.status==='late'?'Late':'Pending')}</span></div>))}</div></>}
           </div>
           ):(<p style={{color:T.textDim,fontSize:'0.8rem',textAlign:'center',padding:'10px'}}>{t.noInstallment}</p>)}
           {details.notes&&<><SectionHeader title={`📝 ${t.notes}`} T={T}/><p style={{color:T.text,fontSize:'0.82rem',background:T.surface2,borderRadius:'12px',padding:'12px'}}>{details.notes}</p></>}
@@ -1016,6 +1078,40 @@ function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete}){
         </Modal>
       );})()}
       {confirm&&<Confirm t={t} onConfirm={()=>del(confirm)} onCancel={()=>setConfirm(null)} T={T}/>}
+      {paymentModal&&(()=>{const vehicle=items.find(x=>x.id===paymentModal);const nextMonth=((vehicle.financing?.payments||[]).length||0)+1;return(
+        <Modal title={`${lang==='ar'?'تسجيل قسط':'Register Payment'} - ${vehicle?.name}`} onClose={()=>{setPaymentModal(null);setPaymentForm({});}} T={T}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+            <Field label={lang==='ar'?'رقم القسط':'Month Number'}>
+              <Inp type="number" min={nextMonth} value={paymentForm.month||nextMonth} onChange={e=>setPaymentForm(f=>({...f,month:num(e.target.value)}))} T={T}/>
+            </Field>
+            <Field label={t.date}>
+              <Inp type="date" value={paymentForm.date||todayStr()} onChange={e=>setPaymentForm(f=>({...f,date:e.target.value}))} T={T}/>
+            </Field>
+            <Field label={t.amount}>
+              <Inp type="number" value={paymentForm.amount||vehicle?.financing?.monthlyInstallment||''} onChange={e=>setPaymentForm(f=>({...f,amount:num(e.target.value)}))} T={T}/>
+            </Field>
+            <Field label={lang==='ar'?'طريقة الدفع':'Payment Method'}>
+              <select style={{background:T.inputBg,border:`1px solid ${T.border}`,borderRadius:'0.75rem',padding:'0.5rem 0.75rem',fontSize:'0.875rem',width:'100%',outline:'none',fontFamily:'inherit',color:T.text,cursor:'pointer'}} value={paymentForm.method||'bank'} onChange={e=>setPaymentForm(f=>({...f,method:e.target.value}))} >
+                <option value="bank">{lang==='ar'?'تحويل بنكي':'Bank Transfer'}</option>
+                <option value="cash">{lang==='ar'?'نقد':'Cash'}</option>
+              </select>
+            </Field>
+            <Field label={t.status}>
+              <select style={{background:T.inputBg,border:`1px solid ${T.border}`,borderRadius:'0.75rem',padding:'0.5rem 0.75rem',fontSize:'0.875rem',width:'100%',outline:'none',fontFamily:'inherit',color:T.text,cursor:'pointer'}} value={paymentForm.status||'paid'} onChange={e=>setPaymentForm(f=>({...f,status:e.target.value}))} >
+                <option value="paid">{lang==='ar'?'مدفوع':'Paid'}</option>
+                <option value="partial">{lang==='ar'?'جزئي':'Partial'}</option>
+                <option value="pending">{lang==='ar'?'معلّق':'Pending'}</option>
+                <option value="late">{lang==='ar'?'متأخر':'Late'}</option>
+              </select>
+            </Field>
+            {paymentForm.status==='partial'&&<Field label={lang==='ar'?'المبلغ المدفوع':'Amount Paid'}>
+              <Inp type="number" value={paymentForm.paidAmount||''} onChange={e=>setPaymentForm(f=>({...f,paidAmount:num(e.target.value)}))} T={T}/>
+            </Field>}
+          </div>
+          <SaveBtn onClick={()=>{const mth=num(paymentForm.month)||nextMonth;const d=new Date();d.setDate(1);d.setMonth(d.getMonth()+mth-1);const payment={id:genId(),month:mth,dueDate:d.toISOString().split('T')[0],amount:num(paymentForm.amount)||num(vehicle?.financing?.monthlyInstallment),method:paymentForm.method||'bank',status:paymentForm.status||'paid',paidAmount:paymentForm.status==='partial'?num(paymentForm.paidAmount)||0:num(paymentForm.amount)||num(vehicle?.financing?.monthlyInstallment),pendingAmount:paymentForm.status==='partial'?(num(paymentForm.amount)||num(vehicle?.financing?.monthlyInstallment))-num(paymentForm.paidAmount):0,date:paymentForm.date||todayStr()};setData(d=>({...d,vehicles:(d.vehicles||[]).map(v=>v.id===paymentModal?{...v,financing:{...v.financing,payments:[...(v.financing?.payments||[]),payment]}}:v)}));logActivity(t.paidAction,t.vehicles,`"${vehicle?.name}" - ${lang==='ar'?'قسط':'Month'} ${mth}`);setPaymentModal(null);setPaymentForm({});}} label={t.save} T={T}/>
+          <CancelBtn onClick={()=>{setPaymentModal(null);setPaymentForm({});}} label={t.cancel} T={T}/>
+        </Modal>
+      );})()}
     </div>
   );
 }
@@ -1024,9 +1120,9 @@ function InvestmentsPage({data,setData,lang,t,T,logActivity,canDelete}){
   const [modal,setModal]=useState(null),[confirm,setConfirm]=useState(null),[form,setForm]=useState({}),[errors,setErrors]=useState({}),[typeFilter,setTypeFilter]=useState('all');
   const items=data.investments||[];const it=lang==='ar'?INV_T.ar:INV_T.en;
   const icons={stocks:'📈',gold:'🥇',currencies:'💱',funds:'🏗️',crypto:'₿',startup:'🚀',other:'💡'};
-  const openAdd=()=>{setForm({name:'',type:'',purchasePrice:'',currentValue:'',purchaseDate:todayStr(),notes:''});setErrors({});setModal('add');};
-  const openEdit=item=>{setForm({...item,purchasePrice:String(item.purchasePrice),currentValue:String(item.currentValue)});setErrors({});setModal({edit:item});};
-  const save=()=>{const errs=validate([['name',form.name],['type',form.type],['purchasePrice',form.purchasePrice,{positive:true}],['currentValue',form.currentValue,{nonNegative:true,optional:true}]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,purchasePrice:num(form.purchasePrice),currentValue:num(form.currentValue)};setData(d=>({...d,investments:modal==='add'?[...(d.investments||[]),entry]:(d.investments||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.investments,`"${entry.name}"`);setModal(null);};
+  const openAdd=()=>{setForm({name:'',type:'',purchasePrice:'',currentValue:'',purchaseDate:todayStr(),financing:{type:'installment',purchasePrice:'',downPayment:'',balanceToInstall:'',monthlyInstallment:'',totalMonths:'',payments:[]},notes:''});setErrors({});setModal('add');};
+  const openEdit=item=>{setForm({...item,purchasePrice:String(item.purchasePrice),currentValue:String(item.currentValue),financing:{...item.financing,purchasePrice:String(item.financing?.purchasePrice||''),downPayment:String(item.financing?.downPayment||''),balanceToInstall:String(item.financing?.balanceToInstall||''),monthlyInstallment:String(item.financing?.monthlyInstallment||''),totalMonths:String(item.financing?.totalMonths||'')}});setErrors({});setModal({edit:item});};
+  const save=()=>{const errs=validate([['name',form.name],['type',form.type],['purchasePrice',form.purchasePrice,{positive:true}],['currentValue',form.currentValue,{nonNegative:true,optional:true}]],t);if(Object.keys(errs).length){setErrors(errs);return;}const entry={...form,id:modal==='add'?genId():form.id,purchasePrice:num(form.purchasePrice),currentValue:num(form.currentValue),financing:{...form.financing,purchasePrice:num(form.financing?.purchasePrice),downPayment:num(form.financing?.downPayment),balanceToInstall:num(form.financing?.balanceToInstall),monthlyInstallment:num(form.financing?.monthlyInstallment),totalMonths:num(form.financing?.totalMonths),payments:form.financing?.payments||[]}};setData(d=>({...d,investments:modal==='add'?[...(d.investments||[]),entry]:(d.investments||[]).map(x=>x.id===entry.id?entry:x)}));logActivity(modal==='add'?t.addedAction:t.editedAction,t.investments,`"${entry.name}"`);setModal(null);};
   const del=id=>{const item=items.find(x=>x.id===id);setData(d=>({...d,investments:d.investments.filter(x=>x.id!==id)}));logActivity(t.deletedAction,t.investments,`"${item?.name}"`);setConfirm(null);};
   const totalCost=items.reduce((s,i)=>s+num(i.purchasePrice),0),totalVal=items.reduce((s,i)=>s+num(i.currentValue),0),totalPL=totalVal-totalCost;
   const filtered=typeFilter==='all'?items:items.filter(x=>x.type===typeFilter);
@@ -1064,6 +1160,13 @@ function InvestmentsPage({data,setData,lang,t,T,logActivity,canDelete}){
           <Field label={`${t.purchasePrice} (${t.sar})`} error={errors.purchasePrice}><Inp type="number" value={form.purchasePrice} onChange={e=>setForm(f=>({...f,purchasePrice:e.target.value}))} T={T} error={errors.purchasePrice}/></Field>
           <Field label={`${t.currentValue} (${t.sar})`} error={errors.currentValue}><Inp type="number" value={form.currentValue} onChange={e=>setForm(f=>({...f,currentValue:e.target.value}))} T={T} error={errors.currentValue}/></Field>
           <Field label={t.purchaseDate}><Inp type="date" value={form.purchaseDate} onChange={e=>setForm(f=>({...f,purchaseDate:e.target.value}))} T={T}/></Field>
+        </div>
+        <SectionHeader title={`💳 ${t.installmentSummary} (${lang==='ar'?'اتركه فارغاً إن لا يوجد':'leave empty if none'})`} T={T}/>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+          <Field label={t.purchasePrice} T={T}><Inp type="number" value={form.financing?.purchasePrice} onChange={e=>setForm(f=>({...f,financing:{...f.financing,purchasePrice:e.target.value,balanceToInstall:num(e.target.value)-num(f.financing?.downPayment||0)}})) } T={T}/></Field>
+          <Field label={t.downPayment} T={T}><Inp type="number" value={form.financing?.downPayment} onChange={e=>setForm(f=>({...f,financing:{...f.financing,downPayment:e.target.value,balanceToInstall:num(f.financing?.purchasePrice||0)-num(e.target.value)}})) } T={T}/></Field>
+          <Field label={t.totalInstallments} T={T}><Inp type="number" value={form.financing?.totalMonths} onChange={e=>setForm(f=>{const tm=num(e.target.value);const bal=num(f.financing?.balanceToInstall||0);return{...f,financing:{...f.financing,totalMonths:e.target.value,monthlyInstallment:tm>0?Math.round(bal/tm):0}}}) } T={T}/></Field>
+          <Field label={t.installment} T={T}><Inp type="number" value={form.financing?.monthlyInstallment} onChange={e=>setForm(f=>({...f,financing:{...f.financing,monthlyInstallment:e.target.value}})) } T={T}/></Field>
         </div>
         <Field label={t.notes}><Ta value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} T={T}/></Field>
         <SaveBtn onClick={save} label={t.save} T={T}/><CancelBtn onClick={()=>setModal(null)} label={t.cancel} T={T}/>
