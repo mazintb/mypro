@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, onSnapshot, runTransaction } from "firebase/firestore";
 import { auth, db } from "./firebase";
@@ -533,53 +533,60 @@ function calculateInstallmentStatus(financing) {
 // ═══ DASHBOARD ═══
 function Dashboard({data,lang,t,T,cal='gregory'}){
   const re=data.realEstate||[],co=data.companies||[],ve=data.vehicles||[],iv=data.investments||[],tr=data.transactions||[];
-  const totalAssets=re.reduce((s,p)=>s+num(p.value),0)+co.reduce((s,c)=>s+num(c.capital),0)+ve.reduce((s,v)=>s+num(v.value),0)+iv.reduce((s,i)=>s+num(i.currentValue),0);
 
-  // Monthly income: sum from active companies + normalized rent from properties
-  const rentNormalize=(amt,freq)=>{const a=num(amt);if(!a)return 0;if(freq==='quarterly')return a/3;if(freq==='yearly')return a/12;return a;};
-  const rentIncome=re.reduce((s,p)=>{if(p.hasUnits)return s+(p.units||[]).filter(u=>u.status==='occupied').reduce((su,u)=>su+rentNormalize(u.rent?.amount,u.rent?.frequency),0);if(p.status==='occupied')return s+rentNormalize(p.rent?.amount,p.rent?.frequency);return s;},0);
-  const companyIncome=co.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+num(c.monthlyRevenue),0);
-  const mInc=rentIncome+companyIncome;
+  const {totalAssets,mInc,mExp}=useMemo(()=>{
+    const rentNormalize=(amt,freq)=>{const a=num(amt);if(!a)return 0;if(freq==='quarterly')return a/3;if(freq==='yearly')return a/12;return a;};
+    const totalAssets=re.reduce((s,p)=>s+num(p.value),0)+co.reduce((s,c)=>s+num(c.capital),0)+ve.reduce((s,v)=>s+num(v.value),0)+iv.reduce((s,i)=>s+num(i.currentValue),0);
+    const rentIncome=re.reduce((s,p)=>{if(p.hasUnits)return s+(p.units||[]).filter(u=>u.status==='occupied').reduce((su,u)=>su+rentNormalize(u.rent?.amount,u.rent?.frequency),0);if(p.status==='occupied')return s+rentNormalize(p.rent?.amount,p.rent?.frequency);return s;},0);
+    const companyIncome=co.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+num(c.monthlyRevenue),0);
+    const mInc=rentIncome+companyIncome;
+    const companyExp=co.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+num(c.monthlyExpense),0);
+    const financeExp=ve.reduce((s,v)=>{const F=calculateInstallmentStatus(v.financing);return s+(F?.monthlyObligation||num(v.loan?.monthlyInstallment)||0);},0);
+    const recurringOps=(data.operations||[]).filter(o=>o.frequency==='monthly'&&o.status!=='paid').reduce((s,o)=>s+num(o.amount),0);
+    const mExp=companyExp+financeExp+recurringOps;
+    return{totalAssets,mInc,mExp};
+  },[re,co,ve,iv,data.operations]);
 
-  // Monthly expenses: company costs + vehicle installments + recurring operations
-  const companyExp=co.filter(c=>c.companyStatus==='active').reduce((s,c)=>s+num(c.monthlyExpense),0);
-  const financeExp=ve.reduce((s,v)=>{const F=calculateInstallmentStatus(v.financing);return s+(F?.monthlyObligation||num(v.loan?.monthlyInstallment)||0);},0);
-  const recurringOps=(data.operations||[]).filter(o=>o.frequency==='monthly'&&o.status!=='paid').reduce((s,o)=>s+num(o.amount),0);
-  const mExp=companyExp+financeExp+recurringOps;
-  const alerts=[];
-  re.forEach(p=>{
-    const units=p.hasUnits?p.units:(p.status==='occupied'?[p]:[]);
-    units.filter(u=>u.status==='occupied').forEach(u=>{
-      const d=daysUntil(u.rent?.nextDue);if(d!==null&&d<=30)alerts.push({label:t.rentDue,name:p.name+(p.hasUnits?' - وحدة '+u.number:''),days:d,color:d<=7?T.danger:T.warning});
-      const dc=daysUntil(u.contract?.endDate);if(dc!==null&&dc>=0&&dc<=60)alerts.push({label:t.contractExpiring,name:p.name,days:dc,color:dc<=14?T.danger:T.warning});
+  const alerts=useMemo(()=>{
+    const list=[];
+    re.forEach(p=>{
+      const units=p.hasUnits?p.units:(p.status==='occupied'?[p]:[]);
+      units.filter(u=>u.status==='occupied').forEach(u=>{
+        const d=daysUntil(u.rent?.nextDue);if(d!==null&&d<=30)list.push({label:t.rentDue,name:p.name+(p.hasUnits?' - وحدة '+u.number:''),days:d,color:d<=7?T.danger:T.warning});
+        const dc=daysUntil(u.contract?.endDate);if(dc!==null&&dc>=0&&dc<=60)list.push({label:t.contractExpiring,name:p.name,days:dc,color:dc<=14?T.danger:T.warning});
+      });
     });
-  });
-  ve.forEach(v=>{const di=daysUntil(v.insurance?.expiryDate);if(di!==null&&di<=30)alerts.push({label:t.insuranceExpiring,name:v.name,days:di,color:di<=7?T.danger:T.warning});});
-  (data.operations||[]).filter(o=>o.status==='pending').forEach(o=>{const d=daysUntil(o.nextDue||o.date);if(d!==null&&d<=7)alerts.push({label:(lang==='ar'?OP_T.ar:OP_T.en)[o.type]||o.type,name:o.description,days:d,color:d<=2?T.danger:T.warning});});
-  (data.loansGiven||[]).filter(l=>l.status==='active').forEach(l=>{const d=daysUntil(l.returnDate);if(d!==null&&d<=30)alerts.push({label:lang==='ar'?'قرض مُعطى':'Loan due',name:l.borrowerName,days:d,color:d<=7?T.danger:T.warning});});
-  alerts.sort((a,b)=>a.days-b.days);
-  // Build chart from months that have actual data, fallback to last 6 calendar months
-  const allMonths=[...new Set(tr.map(tx=>tx.date?.substring(0,7)).filter(Boolean))].sort();
-  const chartMonths=allMonths.length>=2
-    ? allMonths.slice(-6)
-    : Array.from({length:6},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-5+i);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;});
-  const chartData=chartMonths.map(ym=>{
-    const [y,m]=ym.split('-').map(Number);
-    const mn=lang==='ar'?MONTHS_AR[m-1]:MONTHS_EN[m-1];
-    const inc=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='income'&&td.getMonth()===m-1&&td.getFullYear()===y;}).reduce((s,tx)=>s+tx.amount,0);
-    const expTr=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='expense'&&td.getMonth()===m-1&&td.getFullYear()===y;}).reduce((s,tx)=>s+tx.amount,0);
-    const expManual=(data.expenses||[]).filter(ex=>{const td=new Date(ex.date);return td.getMonth()===m-1&&td.getFullYear()===y;}).reduce((s,ex)=>s+ex.amount,0);
-    return{name:mn,دخل:inc,مصاريف:expTr+expManual};
-  });
-  // Aggregated installment liabilities (vehicles + installment-type operations)
-  const vehFinance=ve.map(v=>{const F=calculateInstallmentStatus(v.financing);return F||{monthlyObligation:num(v.loan?.monthlyInstallment)||0,remaining:num(v.loan?.monthlyInstallment||0)*(num(v.loan?.remainingMonths)||0)};}).filter(F=>F?.monthlyObligation>0);
-  const opInst=(data.operations||[]).filter(o=>o.type==='installment');
-  const liabMonthly=vehFinance.reduce((s,F)=>s+num(F.monthlyObligation),0)+opInst.filter(o=>o.frequency==='monthly').reduce((s,o)=>s+num(o.amount),0);
-  const liabRemaining=vehFinance.reduce((s,F)=>s+num(F.remaining),0)+opInst.reduce((s,o)=>s+num(o.remainingMonths)*num(o.amount),0);
-  const liabCount=vehFinance.length+opInst.length;
-  // True net worth = assets minus outstanding obligations
-  const netWorth=totalAssets-liabRemaining;
-  const pieData=[{name:lang==='ar'?'عقارات':'Real Estate',value:re.reduce((s,p)=>s+num(p.value),0)},{name:lang==='ar'?'شركات':'Companies',value:co.reduce((s,c)=>s+num(c.capital),0)},{name:lang==='ar'?'مركبات':'Vehicles',value:ve.reduce((s,v)=>s+num(v.value),0)},{name:lang==='ar'?'استثمارات':'Investments',value:iv.reduce((s,i)=>s+num(i.currentValue),0)}].filter(d=>d.value>0);
+    ve.forEach(v=>{const di=daysUntil(v.insurance?.expiryDate);if(di!==null&&di<=30)list.push({label:t.insuranceExpiring,name:v.name,days:di,color:di<=7?T.danger:T.warning});});
+    (data.operations||[]).filter(o=>o.status==='pending').forEach(o=>{const d=daysUntil(o.nextDue||o.date);if(d!==null&&d<=7)list.push({label:(lang==='ar'?OP_T.ar:OP_T.en)[o.type]||o.type,name:o.description,days:d,color:d<=2?T.danger:T.warning});});
+    (data.loansGiven||[]).filter(l=>l.status==='active').forEach(l=>{const d=daysUntil(l.returnDate);if(d!==null&&d<=30)list.push({label:lang==='ar'?'قرض مُعطى':'Loan due',name:l.borrowerName,days:d,color:d<=7?T.danger:T.warning});});
+    return list.sort((a,b)=>a.days-b.days);
+  },[re,ve,data.operations,data.loansGiven,t,T,lang]);
+
+  const chartData=useMemo(()=>{
+    const allMonths=[...new Set(tr.map(tx=>tx.date?.substring(0,7)).filter(Boolean))].sort();
+    const chartMonths=allMonths.length>=2
+      ?allMonths.slice(-6)
+      :Array.from({length:6},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-5+i);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;});
+    return chartMonths.map(ym=>{
+      const [y,m]=ym.split('-').map(Number);
+      const mn=lang==='ar'?MONTHS_AR[m-1]:MONTHS_EN[m-1];
+      const inc=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='income'&&td.getMonth()===m-1&&td.getFullYear()===y;}).reduce((s,tx)=>s+tx.amount,0);
+      const expTr=tr.filter(tx=>{const td=new Date(tx.date);return tx.type==='expense'&&td.getMonth()===m-1&&td.getFullYear()===y;}).reduce((s,tx)=>s+tx.amount,0);
+      const expManual=(data.expenses||[]).filter(ex=>{const td=new Date(ex.date);return td.getMonth()===m-1&&td.getFullYear()===y;}).reduce((s,ex)=>s+ex.amount,0);
+      return{name:mn,دخل:inc,مصاريف:expTr+expManual};
+    });
+  },[tr,data.expenses,lang]);
+
+  const {liabMonthly,liabRemaining,liabCount,netWorth,pieData,opInst}=useMemo(()=>{
+    const vehFinance=ve.map(v=>{const F=calculateInstallmentStatus(v.financing);return F||{monthlyObligation:num(v.loan?.monthlyInstallment)||0,remaining:num(v.loan?.monthlyInstallment||0)*(num(v.loan?.remainingMonths)||0)};}).filter(F=>F?.monthlyObligation>0);
+    const opInst=(data.operations||[]).filter(o=>o.type==='installment');
+    const liabMonthly=vehFinance.reduce((s,F)=>s+num(F.monthlyObligation),0)+opInst.filter(o=>o.frequency==='monthly').reduce((s,o)=>s+num(o.amount),0);
+    const liabRemaining=vehFinance.reduce((s,F)=>s+num(F.remaining),0)+opInst.reduce((s,o)=>s+num(o.remainingMonths)*num(o.amount),0);
+    const liabCount=vehFinance.length+opInst.length;
+    const netWorth=totalAssets-liabRemaining;
+    const pieData=[{name:lang==='ar'?'عقارات':'Real Estate',value:re.reduce((s,p)=>s+num(p.value),0)},{name:lang==='ar'?'شركات':'Companies',value:co.reduce((s,c)=>s+num(c.capital),0)},{name:lang==='ar'?'مركبات':'Vehicles',value:ve.reduce((s,v)=>s+num(v.value),0)},{name:lang==='ar'?'استثمارات':'Investments',value:iv.reduce((s,i)=>s+num(i.currentValue),0)}].filter(d=>d.value>0);
+    return{liabMonthly,liabRemaining,liabCount,netWorth,pieData,opInst};
+  },[ve,data.operations,re,co,iv,totalAssets,lang]);
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
       {/* Hero */}
