@@ -161,12 +161,11 @@ const daysUntil=d=>{if(!d)return null;const dt=new Date(d);if(isNaN(dt.getTime()
 const num=v=>{const n=typeof v==='number'?v:parseFloat(v);return Number.isFinite(n)?n:0;};
 const fmt=n=>Math.round(num(n)).toLocaleString('ar-SA');
 const fmtC=(n,lang)=>`${fmt(n)} ${lang==='ar'?'ريال':'SAR'}`;
-let DATE_CAL='gregory';   // 'gregory' | 'hijri' — set from App settings during render
-const fmtDate=(d,lang)=>{
+const fmtDate=(d,lang,cal='gregory')=>{
   if(!d)return '—';
   const dt=new Date(d);
   if(isNaN(dt.getTime()))return '—';
-  const calId=DATE_CAL==='hijri'?'islamic-umalqura':'gregory';
+  const calId=cal==='hijri'?'islamic-umalqura':'gregory';
   const loc=(lang==='ar'?'ar-SA':'en-US')+'-u-ca-'+calId;
   return dt.toLocaleDateString(loc,{year:'numeric',month:'2-digit',day:'2-digit'});
 };
@@ -532,7 +531,7 @@ function calculateInstallmentStatus(financing) {
 }
 
 // ═══ DASHBOARD ═══
-function Dashboard({data,lang,t,T}){
+function Dashboard({data,lang,t,T,cal='gregory'}){
   const re=data.realEstate||[],co=data.companies||[],ve=data.vehicles||[],iv=data.investments||[],tr=data.transactions||[];
   const totalAssets=re.reduce((s,p)=>s+num(p.value),0)+co.reduce((s,c)=>s+num(c.capital),0)+ve.reduce((s,v)=>s+num(v.value),0)+iv.reduce((s,i)=>s+num(i.currentValue),0);
 
@@ -718,7 +717,7 @@ function Dashboard({data,lang,t,T}){
           {(data.transactions||[]).slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,4).map((tx,i)=>(
             <div key={i} style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px'}}>
               <div style={{width:'26px',height:'26px',borderRadius:'8px',background:tx.type==='income'?T.success+'22':T.danger+'22',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{tx.type==='income'?<ArrowUpCircle size={11} color={T.success}/>:<ArrowDownCircle size={11} color={T.danger}/>}</div>
-              <div style={{flex:1,minWidth:0}}><p style={{margin:0,fontSize:'0.7rem',color:T.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{tx.description}</p><p style={{margin:0,fontSize:'0.64rem',color:T.textMuted}}>{fmtDate(tx.date,lang)}</p></div>
+              <div style={{flex:1,minWidth:0}}><p style={{margin:0,fontSize:'0.7rem',color:T.text,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{tx.description}</p><p style={{margin:0,fontSize:'0.64rem',color:T.textMuted}}>{fmtDate(tx.date,lang,cal)}</p></div>
               <span style={{fontSize:'0.7rem',fontWeight:'700',color:tx.type==='income'?T.success:T.danger,whiteSpace:'nowrap'}}>{tx.type==='income'?'+':'-'}{fmt(tx.amount)}</span>
             </div>
           ))}
@@ -729,7 +728,7 @@ function Dashboard({data,lang,t,T}){
 }
 
 // ═══ REAL ESTATE ═══
-function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete}){
+function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete,cal='gregory'}){
   const [modal,setModal]=useState(null),[confirm,setConfirm]=useState(null),[unitModal,setUnitModal]=useState(null);
   const [expandedId,setExpandedId]=useState(null),[search,setSearch]=useState('');
   const [form,setForm]=useState({}),[unitForm,setUnitForm]=useState({}),[errors,setErrors]=useState({});
@@ -811,7 +810,7 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete}){
             ))}<button onClick={()=>openAddUnit(item.id)} style={{width:'100%',padding:'10px',borderRadius:'12px',border:`1.5px dashed ${T.border}`,background:'transparent',color:T.textMuted,cursor:'pointer',fontFamily:'inherit',fontSize:'0.8rem',marginTop:'4px'}}>+ {t.addUnit}</button></>
             ):item.status==='occupied'&&(
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'8px',marginBottom:'10px'}}>
-                {[{l:t.startDate,v:fmtDate(item.contract?.startDate,lang)},{l:t.endDate,v:fmtDate(item.contract?.endDate,lang)},{l:t.lastPaid,v:fmtDate(item.rent?.lastPaid,lang)},{l:t.phone,v:item.tenant?.phone}].map((f,i)=>(
+                {[{l:t.startDate,v:fmtDate(item.contract?.startDate,lang,cal)},{l:t.endDate,v:fmtDate(item.contract?.endDate,lang,cal)},{l:t.lastPaid,v:fmtDate(item.rent?.lastPaid,lang,cal)},{l:t.phone,v:item.tenant?.phone}].map((f,i)=>(
                   <div key={i} style={{background:T.surface2,borderRadius:'10px',padding:'8px'}}><p style={{margin:0,fontSize:'0.65rem',color:T.textMuted}}>{f.l}</p><p style={{margin:0,fontSize:'0.78rem',color:T.text,fontWeight:'600'}}>{f.v||'—'}</p></div>
                 ))}
               </div>
@@ -979,7 +978,7 @@ function loanSummary(loan){
   const progress=total>0?Math.round((paidMonths/total)*100):0;
   return {hasLoan,inst,total,rem,dp,paidMonths,remainingAmount,paidAmount,totalCost,progress};
 }
-function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete}){
+function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete,cal='gregory'}){
   const [modal,setModal]=useState(null),[confirm,setConfirm]=useState(null),[form,setForm]=useState({}),[errors,setErrors]=useState({}),[details,setDetails]=useState(null),[paymentModal,setPaymentModal]=useState(null),[paymentForm,setPaymentForm]=useState({});
   const items=data.vehicles||[];
   const openAdd=()=>{setForm({name:'',type:'',plateNumber:'',year:new Date().getFullYear(),value:'',insurance:{company:'',expiryDate:'',amount:''},registration:{expiryDate:'',amount:''},financing:{type:'installment',purchasePrice:'',downPayment:'',balanceToInstall:'',monthlyInstallment:'',totalMonths:'',payments:[]},notes:''});setErrors({});setModal('add');};
@@ -1043,12 +1042,12 @@ function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete}){
           <SectionHeader title={`🛡️ ${t.insurance}`} T={T}/>
           <div style={{background:T.surface2,borderRadius:'12px',padding:'12px',marginBottom:'10px'}}>
             <Row l={lang==='ar'?'الشركة':'Company'} v={details.insurance?.company||'—'}/>
-            <Row l={t.insExpiry} v={fmtDate(details.insurance?.expiryDate,lang)} c={di!==null&&di<=30?T.warning:T.text}/>
+            <Row l={t.insExpiry} v={fmtDate(details.insurance?.expiryDate,lang,cal)} c={di!==null&&di<=30?T.warning:T.text}/>
             <Row l={t.annualPremium} v={fmtC(details.insurance?.amount||0,lang)}/>
           </div>
           <SectionHeader title={`📋 ${t.registration}`} T={T}/>
           <div style={{background:T.surface2,borderRadius:'12px',padding:'12px',marginBottom:'10px'}}>
-            <Row l={t.regExpiry} v={fmtDate(details.registration?.expiryDate,lang)}/>
+            <Row l={t.regExpiry} v={fmtDate(details.registration?.expiryDate,lang,cal)}/>
             <Row l={t.annualFee} v={fmtC(details.registration?.amount||0,lang)}/>
           </div>
           <SectionHeader title={`💳 ${t.installmentSummary}`} T={T}/>
@@ -1175,7 +1174,7 @@ function InvestmentsPage({data,setData,lang,t,T,logActivity,canDelete}){
     </div>
   );
 }
-function OperationsPage({data,setData,lang,t,T,logActivity,currentUser,canDelete}){
+function OperationsPage({data,setData,lang,t,T,logActivity,currentUser,canDelete,cal='gregory'}){
   const [modal,setModal]=useState(false),[confirm,setConfirm]=useState(null),[form,setForm]=useState({}),[errors,setErrors]=useState({}),[typeF,setTypeF]=useState('all'),[statusF,setStatusF]=useState('all');
   const items=data.operations||[];const ot=lang==='ar'?OP_T.ar:OP_T.en;const ft=lang==='ar'?FREQ_T.ar:FREQ_T.en;
   const icons={maintenance:'🔧',invoice:'📄',subscription:'🔄',installment:'💳',other:'📌'};
@@ -1232,7 +1231,7 @@ function OperationsPage({data,setData,lang,t,T,logActivity,currentUser,canDelete
           <div style={{flex:1,minWidth:'120px'}}>
             <div style={{display:'flex',alignItems:'center',gap:'5px',flexWrap:'wrap'}}><p style={{margin:0,fontSize:'0.82rem',fontWeight:'600',color:T.text}}>{item.description}</p><Badge color={sColor[item.status]||T.textMuted}>{item.status==='paid'?(lang==='ar'?'مدفوع':'Paid'):item.status==='pending'?(lang==='ar'?'معلق':'Pending'):(lang==='ar'?'متأخر':'Late')}</Badge></div>
             <div style={{display:'flex',gap:'6px',marginTop:'2px',flexWrap:'wrap',fontSize:'0.68rem',color:T.textMuted}}>
-              <span>{ot[item.type]||item.type}</span>{item.linkedName&&<span>• {item.linkedName}</span>}<span>• {fmtDate(item.date,lang)}</span>
+              <span>{ot[item.type]||item.type}</span>{item.linkedName&&<span>• {item.linkedName}</span>}<span>• {fmtDate(item.date,lang,cal)}</span>
             </div>
           </div>
           <div style={{textAlign:'end',flexShrink:0}}>
@@ -1263,7 +1262,7 @@ function OperationsPage({data,setData,lang,t,T,logActivity,currentUser,canDelete
   );
 }
 
-function LoansGivenPage({data,setData,lang,t,T,logActivity,canDelete}){
+function LoansGivenPage({data,setData,lang,t,T,logActivity,canDelete,cal='gregory'}){
   const [modal,setModal]=useState(false),[payModal,setPayModal]=useState(null),[confirm,setConfirm]=useState(null),[form,setForm]=useState({}),[errors,setErrors]=useState({}),[payAmt,setPayAmt]=useState('');
   const items=data.loansGiven||[];
   const openAdd=()=>{setForm({borrowerName:'',borrowerPhone:'',amount:'',loanDate:todayStr(),durationMonths:'',returnDate:'',notes:''});setErrors({});setModal(true);};
@@ -1287,8 +1286,8 @@ function LoansGivenPage({data,setData,lang,t,T,logActivity,canDelete}){
           </div>
           <div style={{height:'6px',background:T.surface2,borderRadius:'3px',overflow:'hidden',marginBottom:'8px'}}><div style={{height:'100%',width:`${p}%`,background:`linear-gradient(135deg,${T.goldDark},${T.gold})`,borderRadius:'3px',transition:'width 0.3s'}}/></div>
           <div style={{display:'flex',gap:'10px',fontSize:'0.7rem',color:T.textMuted,flexWrap:'wrap',marginBottom:'8px'}}>
-            <span>{t.loanDate}: {fmtDate(item.loanDate,lang)}</span>
-            <span style={{color:dr!==null&&dr<=30&&status!=='completed'?T.warning:T.textMuted}}>{t.returnDate}: {fmtDate(item.returnDate,lang)}{dr!==null&&dr>=0&&dr<=30&&status!=='completed'?` (${dr} ${t.days})`:''}</span>
+            <span>{t.loanDate}: {fmtDate(item.loanDate,lang,cal)}</span>
+            <span style={{color:dr!==null&&dr<=30&&status!=='completed'?T.warning:T.textMuted}}>{t.returnDate}: {fmtDate(item.returnDate,lang,cal)}{dr!==null&&dr>=0&&dr<=30&&status!=='completed'?` (${dr} ${t.days})`:''}</span>
           </div>
           <div style={{display:'flex',gap:'6px'}}>
             {status!=='completed'&&<SmBtn onClick={()=>setPayModal(item.id)} label={t.recordPayment} icon={HandCoins} color={T.gold} T={T}/>}
@@ -1356,7 +1355,7 @@ function FinancialPage({data,lang,t,T}){
   );
 }
 
-function FinanceTabPage({data,setData,lang,t,T,logActivity,currentUser,canDelete}){
+function FinanceTabPage({data,setData,lang,t,T,logActivity,currentUser,canDelete,cal='gregory'}){
   const [sub,setSub]=useState('expenses');
   const tabs=[{id:'expenses',label:lang==='ar'?'المصاريف':'Expenses'},{id:'transactions',label:lang==='ar'?'المعاملات':'Transactions'},{id:'financial',label:lang==='ar'?'الذكاء المالي':'Financial Intel'},{id:'reports',label:lang==='ar'?'التقارير':'Reports'}];
   const cats=data.customCategories||DEF_CATS_AR;
@@ -1372,7 +1371,7 @@ function FinanceTabPage({data,setData,lang,t,T,logActivity,currentUser,canDelete
   );
 }
 
-function ExpensesInner({data,setData,lang,t,T,logActivity,currentUser,canDelete,cats}){
+function ExpensesInner({data,setData,lang,t,T,logActivity,currentUser,canDelete,cats,cal='gregory'}){
   const [modal,setModal]=useState(false),[confirm,setConfirm]=useState(null),[catModal,setCatModal]=useState(false),[newCat,setNewCat]=useState(''),[form,setForm]=useState({}),[errors,setErrors]=useState({}),[filter,setFilter]=useState('all');
   const items=data.expenses||[];
   const openAdd=()=>{setForm({date:todayStr(),amount:'',category:cats[0]||'',description:''});setErrors({});setModal(true);};
@@ -1394,7 +1393,7 @@ function ExpensesInner({data,setData,lang,t,T,logActivity,currentUser,canDelete,
           <thead><tr style={{background:T.surface2}}>{[t.date,t.category,t.description,t.amount,''].map((h,i)=>(<th key={i} style={{padding:'10px 12px',color:T.textMuted,fontWeight:'600',fontSize:'0.68rem',textAlign:'start',whiteSpace:'nowrap'}}>{h}</th>))}</tr></thead>
           <tbody>{filtered.length===0&&<tr><td colSpan={5} style={{padding:'2rem',textAlign:'center',color:T.textMuted}}>{t.noData}</td></tr>}
           {filtered.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(item=>(<tr key={item.id} style={{borderTop:`1px solid ${T.border}`}}>
-            <td style={{padding:'9px 12px',color:T.textMuted,whiteSpace:'nowrap',fontSize:'0.7rem'}}>{fmtDate(item.date,lang)}</td>
+            <td style={{padding:'9px 12px',color:T.textMuted,whiteSpace:'nowrap',fontSize:'0.7rem'}}>{fmtDate(item.date,lang,cal)}</td>
             <td style={{padding:'9px 12px'}}><Badge color={T.warning}>{item.category}</Badge></td>
             <td style={{padding:'9px 12px',color:T.text,maxWidth:'130px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.description}</td>
             <td style={{padding:'9px 12px',fontWeight:'700',color:T.danger,whiteSpace:'nowrap'}}>{fmtC(item.amount,lang)}</td>
@@ -1441,7 +1440,7 @@ function TransactionsInner({data,setData,lang,t,T,logActivity,currentUser}){
           <thead><tr style={{background:T.surface2}}>{[t.date,t.type,t.category,t.description,t.amount].map((h,i)=>(<th key={i} style={{padding:'10px 12px',color:T.textMuted,fontWeight:'600',fontSize:'0.68rem',textAlign:'start',whiteSpace:'nowrap'}}>{h}</th>))}</tr></thead>
           <tbody>{filtered.length===0&&<tr><td colSpan={5} style={{padding:'2rem',textAlign:'center',color:T.textMuted}}>{t.noData}</td></tr>}
           {filtered.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(item=>(<tr key={item.id} style={{borderTop:`1px solid ${T.border}`}}>
-            <td style={{padding:'9px 12px',color:T.textMuted,whiteSpace:'nowrap',fontSize:'0.7rem'}}>{fmtDate(item.date,lang)}</td>
+            <td style={{padding:'9px 12px',color:T.textMuted,whiteSpace:'nowrap',fontSize:'0.7rem'}}>{fmtDate(item.date,lang,cal)}</td>
             <td style={{padding:'9px 12px'}}><Badge color={item.type==='income'?T.success:T.danger}>{item.type==='income'?t.income:t.expense}</Badge></td>
             <td style={{padding:'9px 12px',color:T.textMuted,fontSize:'0.7rem'}}>{item.category}</td>
             <td style={{padding:'9px 12px',color:T.text,maxWidth:'120px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.description}</td>
@@ -1490,7 +1489,7 @@ function ReportsInner({data,lang,t,T}){
   );
 }
 
-function ActivityLogPage({data,lang,t,T}){
+function ActivityLogPage({data,lang,t,T,cal='gregory'}){
   const logs=(data.activityLog||[]).slice().sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
   const ac={'أضاف':T.success,'عدّل':T.warning,'حذف':T.danger,'دفع':T.info,'added':T.success,'edited':T.warning,'deleted':T.danger,'paid':T.info};
   return(
@@ -1504,7 +1503,7 @@ function ActivityLogPage({data,lang,t,T}){
             <div style={{display:'flex',alignItems:'center',gap:'5px',flexWrap:'wrap'}}><span style={{fontSize:'0.76rem',fontWeight:'700',color:T.text}}>{log.userName}</span><Badge color={c}>{log.action}</Badge><span style={{fontSize:'0.68rem',color:T.textMuted}}>{lang==='ar'?'في':'in'} {log.module}</span></div>
             <p style={{margin:'2px 0 0',fontSize:'0.7rem',color:T.textMuted,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{log.description}</p>
           </div>
-          <div style={{textAlign:'end',flexShrink:0}}><p style={{margin:0,fontSize:'0.64rem',color:T.textMuted}}>{fmtDate(dt,lang)}</p><p style={{margin:0,fontSize:'0.62rem',color:T.textDim}}>{dt.toLocaleTimeString(lang==='ar'?'ar-SA':'en-US',{hour:'2-digit',minute:'2-digit'})}</p></div>
+          <div style={{textAlign:'end',flexShrink:0}}><p style={{margin:0,fontSize:'0.64rem',color:T.textMuted}}>{fmtDate(dt,lang,cal)}</p><p style={{margin:0,fontSize:'0.62rem',color:T.textDim}}>{dt.toLocaleTimeString(lang==='ar'?'ar-SA':'en-US',{hour:'2-digit',minute:'2-digit'})}</p></div>
         </div>
       );})}
     </div>
@@ -1537,7 +1536,6 @@ export default function App(){
   const pendingRemote=useRef(null);   // remote doc deferred because we were mid-edit
   const t=TR[lang];
   const T=isDark?DARK:LIGHT;
-  DATE_CAL=cal;   // applied synchronously before children render
   const toggleCal=()=>setCal(c=>{const n=c==='hijri'?'gregory':'hijri';try{localStorage.setItem('calendarPref',n);}catch{}return n;});
 
   useEffect(()=>{
@@ -1667,7 +1665,7 @@ export default function App(){
   const role=userProfile?.role||'viewer';
   const canDelete=role==='owner';
   const currentUser={id:userProfile?.uid,name:userProfile?.name||'مستخدم'};
-  const pageProps={data,setData,lang,t,T,logActivity,currentUser,canDelete};
+  const pageProps={data,setData,lang,t,T,logActivity,currentUser,canDelete,cal};
 
   const spinner=msg=>(<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:T.bg,fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif'}}><div style={{textAlign:'center'}}><div style={{width:'52px',height:'52px',background:`linear-gradient(135deg,${T.goldDark},${T.gold})`,borderRadius:'16px',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px',boxShadow:`0 8px 24px ${T.gold}40`}}><div style={{width:'24px',height:'24px',border:'3px solid rgba(255,255,255,0.3)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/></div><p style={{color:T.textMuted,fontSize:'0.82rem',margin:0,fontWeight:'500'}}>{msg}</p></div><style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style></div>);
 
