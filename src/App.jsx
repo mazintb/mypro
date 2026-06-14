@@ -1274,6 +1274,7 @@ export default function App(){
         background:isDark?'rgba(4,10,22,0.72)':'rgba(248,249,252,0.78)',
         borderBottom:`1px solid ${T.border}`,
         padding:'13px 15px',
+        paddingTop:'calc(13px + env(safe-area-inset-top, 0px))',
         display:'flex',alignItems:'center',gap:'8px',
         position:'sticky',top:0,zIndex:40,
         backdropFilter:'blur(28px) saturate(180%)',WebkitBackdropFilter:'blur(28px) saturate(180%)',
@@ -1555,7 +1556,7 @@ export default function App(){
       )}
 
       {/* ── CONTENT ── */}
-      <main style={{padding:'14px',paddingBottom:'32px',maxWidth:'600px',margin:'0 auto',boxSizing:'border-box'}}>
+      <main style={{padding:'14px',paddingBottom:'calc(32px + env(safe-area-inset-bottom, 0px))',maxWidth:'600px',margin:'0 auto',boxSizing:'border-box'}}>
         {renderPage()}
       </main>
     </div>

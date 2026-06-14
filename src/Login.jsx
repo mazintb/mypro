@@ -118,9 +118,10 @@ export default function Login() {
 
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'linear-gradient(160deg, #0a0f1e 0%, #0d1f3c 40%, #0a1628 100%)',
-      padding: '1.5rem', fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif',
+      padding: '1.5rem', paddingTop: 'calc(1.5rem + env(safe-area-inset-top, 0px))', paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif',
       direction: 'rtl', position: 'relative', overflow: 'hidden',
     }}>
       {/* Background blobs */}

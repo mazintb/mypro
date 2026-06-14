@@ -52,13 +52,13 @@ export function Ta({value,onChange,rows=2,T=DARK}){
 export function Modal({title,onClose,children,T}){
   return(
     <div style={{position:'fixed',inset:0,zIndex:50,display:'flex',alignItems:'flex-end',justifyContent:'center',background:'rgba(0,0,0,0.6)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)'}}>
-      <div style={{background:T.surface,borderRadius:'28px 28px 0 0',width:'100%',maxWidth:'600px',maxHeight:'93vh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 -16px 60px rgba(0,0,0,0.35)',border:`1px solid ${T.border}`,borderBottom:'none',animation:'slideUp 0.3s cubic-bezier(0.32,0.72,0,1)'}}>
+      <div style={{background:T.surface,borderRadius:'28px 28px 0 0',width:'100%',maxWidth:'600px',maxHeight:'93dvh',overflow:'hidden',display:'flex',flexDirection:'column',boxShadow:'0 -16px 60px rgba(0,0,0,0.35)',border:`1px solid ${T.border}`,borderBottom:'none',animation:'slideUp 0.3s cubic-bezier(0.32,0.72,0,1)'}}>
         <div style={{width:'40px',height:'5px',background:T.border,borderRadius:'3px',margin:'14px auto 0'}}/>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 20px 14px',borderBottom:`1px solid ${T.border}`}}>
           <h3 style={{color:T.text,margin:0,fontWeight:'700',fontSize:'1rem',letterSpacing:'-0.3px'}}>{title}</h3>
-          <button onClick={onClose} style={{background:T.surface2,border:`1px solid ${T.border}`,color:T.textMuted,cursor:'pointer',borderRadius:'50%',display:'flex',width:'30px',height:'30px',alignItems:'center',justifyContent:'center'}}><X size={14}/></button>
+          <button onClick={onClose} style={{background:T.surface2,border:`1px solid ${T.border}`,color:T.textMuted,cursor:'pointer',borderRadius:'50%',display:'flex',width:'34px',height:'34px',alignItems:'center',justifyContent:'center'}}><X size={14}/></button>
         </div>
-        <div style={{overflowY:'auto',flex:1,padding:'20px 20px 32px'}}>{children}</div>
+        <div style={{overflowY:'auto',flex:1,padding:'20px 20px',paddingBottom:'calc(20px + env(safe-area-inset-bottom, 0px))'}}>{children}</div>
       </div>
     </div>
   );

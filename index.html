@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
+      * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
       html { scroll-behavior: smooth; }
       body {
         font-family: 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
@@ -23,11 +23,12 @@
         -moz-osx-font-smoothing: grayscale;
         font-variant-numeric: tabular-nums;
         text-rendering: optimizeLegibility;
+        overscroll-behavior-y: none;
       }
       /* Tabular figures for all numeric/data surfaces keep columns aligned */
       input, button, select, textarea, table { font-variant-numeric: tabular-nums; }
       /* Physical press feedback + smooth interaction across the whole app */
-      button { transition: transform .15s cubic-bezier(.32,.72,0,1), filter .18s ease, box-shadow .18s ease, background .18s ease; }
+      button { transition: transform .15s cubic-bezier(.32,.72,0,1), filter .18s ease, box-shadow .18s ease, background .18s ease; touch-action: manipulation; }
       button:hover { filter: brightness(1.07); }
       button:active { transform: scale(.97); filter: brightness(1); }
       /* Accessible keyboard focus ring without disturbing mouse users */
@@ -42,6 +43,7 @@
       :root {
         --app-height: 100dvh;
         --nav-height: 80px;
+        --safe-top: env(safe-area-inset-top, 0px);
         --safe-bottom: env(safe-area-inset-bottom, 0px);
         --content-bottom: calc(var(--nav-height) + var(--safe-bottom) + 16px);
       }
@@ -55,6 +57,10 @@
       button{cursor:pointer;border:none;background:none;font-family:inherit}
       table{border-collapse:collapse;width:100%}
       th,td{text-align:inherit}
+      /* Prevent iOS auto-zoom on input focus (requires font-size >= 16px) */
+      @media (max-width: 768px) {
+        input, select, textarea { font-size: 16px !important; }
+      }
       @media print { aside, header, footer, button { display: none !important; } main { padding: 0 !important; } }
     </style>
   </head>
