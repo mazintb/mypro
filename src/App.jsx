@@ -187,7 +187,7 @@ function Dashboard({data,lang,t,T,cal='gregory'}){
         </div>
       )}
       {/* Chart */}
-      <div style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
+      <div style={{background:T.surface,borderRadius:'20px',padding:'14px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
         <p style={{color:T.text,fontWeight:'700',fontSize:'0.85rem',margin:'0 0 12px',display:'flex',alignItems:'center',gap:'6px'}}><BarChart3 size={14} color={T.gold}/>{t.incomeVsExpense}</p>
         <ResponsiveContainer width="100%" height={170}>
           <AreaChart data={chartData} margin={{top:0,right:0,left:-20,bottom:0}}>
@@ -206,12 +206,12 @@ function Dashboard({data,lang,t,T,cal='gregory'}){
       </div>
       {/* Pie + Recent */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-        <div style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
+        <div style={{background:T.surface,borderRadius:'20px',padding:'14px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
           <p style={{color:T.text,fontWeight:'700',fontSize:'0.78rem',margin:'0 0 8px'}}>{t.assetDistribution}</p>
           {pieData.length>0?(<><ResponsiveContainer width="100%" height={110}><PieChart><Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={3} dataKey="value">{pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip formatter={v=>fmtC(v,lang)} contentStyle={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:'10px',color:T.text,fontSize:'0.75rem'}}/></PieChart></ResponsiveContainer>
           <div>{pieData.map((d,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:'0.68rem',marginBottom:'2px'}}><div style={{display:'flex',alignItems:'center',gap:'4px'}}><span style={{width:'7px',height:'7px',borderRadius:'50%',background:PIE_COLORS[i%PIE_COLORS.length],display:'inline-block'}}/><span style={{color:T.textMuted}}>{d.name}</span></div><span style={{color:T.text,fontWeight:'700'}}>{pct(d.value,totalAssets)}%</span></div>))}</div></>):<p style={{color:T.textMuted,textAlign:'center',fontSize:'0.78rem',padding:'1rem'}}>{t.noData}</p>}
         </div>
-        <div style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
+        <div style={{background:T.surface,borderRadius:'20px',padding:'14px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
           <p style={{color:T.text,fontWeight:'700',fontSize:'0.78rem',margin:'0 0 8px'}}>{t.recentTransactions}</p>
           {(data.transactions||[]).slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,4).map((tx,i)=>(
             <div key={i} style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'8px'}}>
@@ -244,11 +244,22 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete,cal='gregor
     logActivity(modal==='add'?t.addedAction:t.editedAction,t.realEstate,`"${entry.name}"`);setModal(null);
   };
   const del=id=>{const item=items.find(x=>x.id===id);setData(d=>({...d,realEstate:d.realEstate.filter(x=>x.id!==id)}));logActivity(t.deletedAction,t.realEstate,`"${item?.name}"`);setConfirm(null);};
+  const advNextDue=(currentDue,freq)=>{
+    const d=currentDue?new Date(currentDue):new Date();
+    if(freq==='monthly')d.setMonth(d.getMonth()+1);
+    else if(freq==='quarterly')d.setMonth(d.getMonth()+3);
+    else d.setFullYear(d.getFullYear()+1);
+    return d.toISOString().slice(0,10);
+  };
   const markPaid=(pid,uid)=>{
-    setData(d=>({...d,realEstate:d.realEstate.map(p=>{if(p.id!==pid)return p;if(uid&&p.hasUnits)return{...p,units:p.units.map(u=>u.id===uid?{...u,rent:{...u.rent,lastPaid:todayStr()}}:u)};return{...p,rent:{...p.rent,lastPaid:todayStr()}};})}));
+    setData(d=>({...d,realEstate:d.realEstate.map(p=>{
+      if(p.id!==pid)return p;
+      if(uid&&p.hasUnits)return{...p,units:p.units.map(u=>u.id===uid?{...u,rent:{...u.rent,lastPaid:todayStr(),nextDue:advNextDue(u.rent?.nextDue,u.rent?.frequency)}}:u)};
+      return{...p,rent:{...p.rent,lastPaid:todayStr(),nextDue:advNextDue(p.rent?.nextDue,p.rent?.frequency)}};
+    })}));
     logActivity(t.paidAction,t.realEstate,`إيجار "${items.find(p=>p.id===pid)?.name}"`);
     setPaidFlash(uid||pid);setTimeout(()=>setPaidFlash(null),1800);
-  };;
+  };
   const openAddUnit=pid=>{setUnitForm({id:'',number:'',floor:'',type:'',status:'',tenant:{name:'',phone:''},rent:{amount:'',frequency:'yearly',nextDue:'',lastPaid:''},contract:{startDate:'',endDate:''}});setErrors({});setUnitModal({pid,isNew:true});};
   const openEditUnit=(pid,u)=>{setUnitForm({...u,rent:{...u.rent,amount:String(u.rent?.amount||'')}});setErrors({});setUnitModal({pid,isNew:false});};
   const saveUnit=()=>{
@@ -423,7 +434,7 @@ function CompaniesPage({data,setData,lang,t,T,logActivity,canDelete}){
       </div>
       {items.length===0&&<EmptyState icon="🏢" title={lang==='ar'?'لا توجد شركات':'No companies yet'} subtitle={lang==='ar'?'أضف شركاتك ومشاريعك هنا':'Add your companies and projects here'} T={T}/>}
       {items.map(item=>{const profit=num(item.monthlyRevenue)-num(item.monthlyExpense);const isActive=item.companyStatus==='active';return(
-        <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
+        <div key={item.id} style={{background:T.surface,borderRadius:'20px',padding:'14px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:'10px',flexWrap:'wrap',gap:'4px'}}>
             <div><div style={{display:'flex',alignItems:'center',gap:'6px',flexWrap:'wrap'}}><h4 style={{margin:0,color:T.text,fontWeight:'700'}}>{item.name}</h4><Badge color={isActive?T.success:T.warning}>{isActive?t.activeCompany:t.underConstruction}</Badge></div><p style={{margin:'2px 0 0',fontSize:'0.73rem',color:T.textMuted}}>{item.type} • {item.ownership}% {t.ownership}</p></div>
             {isActive&&<div style={{textAlign:'end'}}><p style={{margin:0,fontSize:'0.9rem',fontWeight:'800',color:profit>=0?T.success:T.danger}}>{profit>=0?'+':''}{fmtC(profit,lang)}</p><p style={{margin:0,fontSize:'0.65rem',color:T.textMuted}}>{lang==='ar'?'شهرياً':'monthly'}</p></div>}
@@ -489,7 +500,7 @@ function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete,cal='gregory'
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><p style={{margin:0,fontSize:'0.78rem',color:T.textMuted}}>{fmtC(items.reduce((s,v)=>s+num(v.value),0),lang)}</p><AddBtn onClick={openAdd} label={t.add} T={T}/></div>
       {items.length===0&&<EmptyState icon="🚗" title={lang==='ar'?'لا توجد مركبات':'No vehicles yet'} subtitle={lang==='ar'?'سجّل سياراتك لمتابعة التأمين والأقساط':'Register vehicles to track insurance and installments'} T={T}/>}
       {items.map(item=>{const di=daysUntil(item.insurance?.expiryDate);const F=calculateInstallmentStatus(item.financing);return(
-        <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
+        <div key={item.id} style={{background:T.surface,borderRadius:'20px',padding:'14px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:'10px'}}><div><h4 style={{margin:0,color:T.text,fontWeight:'700'}}>{item.name}</h4><p style={{margin:'2px 0 0',fontSize:'0.73rem',color:T.textMuted}}>{item.type} • {item.year} • {item.plateNumber}</p></div><Badge color={T.gold}>{fmtC(item.value,lang)}</Badge></div>
           <div style={{background:T.surface2,borderRadius:'12px',padding:'10px',marginBottom:'10px',display:'flex',flexDirection:'column',gap:'5px'}}>
             {F?.monthlyObligation>0?(<>
@@ -636,7 +647,7 @@ function InvestmentsPage({data,setData,lang,t,T,logActivity,canDelete}){
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
         {filtered.length===0&&<div style={{gridColumn:'1/-1'}}><EmptyState icon="📈" title={lang==='ar'?'لا توجد استثمارات':'No investments yet'} subtitle={lang==='ar'?'أضف محافظك وأصولك الاستثمارية':'Add your portfolios and investment assets'} T={T}/></div>}
         {filtered.map(item=>{const pl=num(item.currentValue)-num(item.purchasePrice);const p=pct(pl,num(item.purchasePrice));return(
-          <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'12px',boxShadow:T.cardShadow}}>
+          <div key={item.id} style={{background:T.surface,borderRadius:'20px',padding:'12px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:'6px'}}><span style={{fontSize:'1.2rem'}}>{icons[item.type]||'💡'}</span><Badge color={pl>=0?T.success:T.danger}>{pl>=0?'+':''}{p}%</Badge></div>
             <h4 style={{margin:'0 0 4px',color:T.text,fontWeight:'700',fontSize:'0.85rem'}}>{item.name}</h4>
             <Badge color={T.gold}>{it[item.type]||item.type}</Badge>
@@ -778,7 +789,7 @@ function LoansGivenPage({data,setData,lang,t,T,logActivity,canDelete,cal='gregor
       </div>
       {items.length===0&&<EmptyState icon="🤝" title={lang==='ar'?'لا توجد قروض':'No loans given'} subtitle={lang==='ar'?'سجّل القروض التي أعطيتها لمتابعة السداد':'Track loans you gave to others'} T={T}/>}
       {items.map(item=>{const totalPaid=(item.payments||[]).reduce((s,p)=>s+num(p.amount),0);const remaining=num(item.amount)-totalPaid;const p=pct(totalPaid,num(item.amount));const dr=daysUntil(item.returnDate);const status=item.status==='completed'?'completed':dr!==null&&dr<0?'late':'active';return(
-        <div key={item.id} style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
+        <div key={item.id} style={{background:T.surface,borderRadius:'20px',padding:'14px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:'8px',flexWrap:'wrap',gap:'4px'}}>
             <div><div style={{display:'flex',alignItems:'center',gap:'6px'}}><h4 style={{margin:0,color:T.text,fontWeight:'700'}}>{item.borrowerName}</h4><Badge color={sc[status]}>{sl[lang][status]}</Badge></div>{item.borrowerPhone&&<p style={{margin:'2px 0 0',fontSize:'0.7rem',color:T.textMuted}}>{item.borrowerPhone}</p>}</div>
             <div style={{textAlign:'end'}}><p style={{margin:0,fontWeight:'800',color:T.gold,fontSize:'0.95rem'}}>{fmtC(item.amount,lang)}</p><p style={{margin:0,fontSize:'0.7rem',color:T.textMuted}}>{lang==='ar'?'متبقي:':'Rem:'} {fmtC(remaining,lang)}</p></div>
@@ -830,15 +841,15 @@ function FinancialPage({data,lang,t,T}){
   if(totalLoanRem>0)recs.push({icon:'🤝',text:`${lang==='ar'?'قروض متبقية:':'Outstanding loans:'} ${fmtC(totalLoanRem,lang)}`});
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
-      {propROI.length>0&&<div style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
+      {propROI.length>0&&<div style={{background:T.surface,borderRadius:'20px',padding:'14px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
         <p style={{color:T.text,fontWeight:'700',fontSize:'0.85rem',margin:'0 0 10px',display:'flex',alignItems:'center',gap:'6px'}}><TrendingUp size={14} color={T.gold}/>{lang==='ar'?'العائد السنوي للعقارات %':'Property ROI %'}</p>
         <ResponsiveContainer width="100%" height={140}><BarChart data={propROI} margin={{top:0,right:0,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke={T.border}/><XAxis dataKey="name" tick={{fontSize:9,fill:T.textMuted}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:9,fill:T.textMuted}} axisLine={false} tickLine={false}/><Tooltip formatter={v=>`${v}%`} contentStyle={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:'10px',color:T.text,fontSize:'0.78rem'}}/><Bar dataKey="roi" radius={[6,6,0,0]}>{propROI.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Bar></BarChart></ResponsiveContainer>
       </div>}
-      <div style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
+      <div style={{background:T.surface,borderRadius:'20px',padding:'14px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
         <p style={{color:T.text,fontWeight:'700',fontSize:'0.85rem',margin:'0 0 10px',display:'flex',alignItems:'center',gap:'6px'}}><BarChart3 size={14} color={T.gold}/>{lang==='ar'?'صافي التدفق النقدي':'Net Cash Flow'}</p>
         <ResponsiveContainer width="100%" height={140}><LineChart data={trend} margin={{top:0,right:0,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke={T.border}/><XAxis dataKey="name" tick={{fontSize:9,fill:T.textMuted}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:9,fill:T.textMuted}} axisLine={false} tickLine={false} tickFormatter={v=>fmt(v)}/><Tooltip formatter={v=>fmtC(v,lang)} contentStyle={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:'10px',color:T.text,fontSize:'0.78rem'}}/><Line type="monotone" dataKey="net" stroke={T.gold} strokeWidth={2.5} dot={{fill:T.gold,r:4}}/></LineChart></ResponsiveContainer>
       </div>
-      {invPerf.length>0&&<div style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
+      {invPerf.length>0&&<div style={{background:T.surface,borderRadius:'20px',padding:'14px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
         <p style={{color:T.text,fontWeight:'700',fontSize:'0.85rem',margin:'0 0 10px',display:'flex',alignItems:'center',gap:'6px'}}><Award size={14} color={T.gold}/>{lang==='ar'?'ترتيب الاستثمارات':'Investments Ranking'}</p>
         {invPerf.map((item,i)=>(<div key={i} style={{display:'flex',alignItems:'center',gap:'8px',padding:'8px 10px',background:T.surface2,borderRadius:'10px',marginBottom:'6px'}}>
           <span style={{width:'20px',height:'20px',borderRadius:'50%',background:i===0?T.gold:i===1?'#aaa':'#cd7f32',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.65rem',fontWeight:'700',color:'#000',flexShrink:0}}>{i+1}</span>
@@ -846,7 +857,7 @@ function FinancialPage({data,lang,t,T}){
           <span style={{fontSize:'0.78rem',fontWeight:'700',color:item.pct>=0?T.success:T.danger}}>{item.pct>=0?'+':''}{item.pct}%</span>
         </div>))}
       </div>}
-      <div style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
+      <div style={{background:T.surface,borderRadius:'20px',padding:'14px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
         <p style={{color:T.text,fontWeight:'700',fontSize:'0.85rem',margin:'0 0 10px',display:'flex',alignItems:'center',gap:'6px'}}><Lightbulb size={14} color={T.gold}/>{t.recommendations}</p>
         {recs.length===0?<div style={{textAlign:'center',padding:'1rem'}}><span style={{fontSize:'2rem'}}>🌟</span><p style={{color:T.success,fontSize:'0.82rem',margin:'8px 0 0'}}>{lang==='ar'?'أصولك في حالة ممتازة!':'Portfolio looks great!'}</p></div>:recs.map((r,i)=>(<div key={i} style={{display:'flex',alignItems:'flex-start',gap:'8px',padding:'10px',background:T.surface2,borderRadius:'10px',marginBottom:'6px'}}><span style={{fontSize:'1rem',flexShrink:0}}>{r.icon}</span><p style={{margin:0,fontSize:'0.78rem',color:T.text}}>{r.text}</p></div>))}
       </div>
@@ -887,7 +898,7 @@ function ExpensesInner({data,setData,lang,t,T,logActivity,currentUser,canDelete,
         <SmBtn onClick={()=>setCatModal(true)} label={lang==='ar'?'الفئات':'Cats'} icon={Filter} color={T.gold} T={T}/>
         <AddBtn onClick={openAdd} label={t.add} T={T}/>
       </div>
-      <div style={{background:T.surface,borderRadius:'16px',boxShadow:T.cardShadow,overflow:'hidden'}}><div style={{overflowX:'auto'}}>
+      <div style={{background:T.surface,borderRadius:'20px',boxShadow:T.cardShadow,overflow:'hidden',border:`1px solid ${T.border}`}}><div style={{overflowX:'auto'}}>
         <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.78rem'}}>
           <thead><tr style={{background:T.surface2}}>{[t.date,t.category,t.description,t.amount,''].map((h,i)=>(<th key={i} style={{padding:'10px 12px',color:T.textMuted,fontWeight:'600',fontSize:'0.68rem',textAlign:'start',whiteSpace:'nowrap'}}>{h}</th>))}</tr></thead>
           <tbody>{filtered.length===0&&<tr><td colSpan={5} style={{padding:'2rem',textAlign:'center',color:T.textMuted}}>{t.noData}</td></tr>}
@@ -934,7 +945,7 @@ function TransactionsInner({data,setData,lang,t,T,logActivity,currentUser}){
         </div>
         <div style={{marginRight:'auto'}}><AddBtn onClick={openAdd} label={t.addTransaction} T={T}/></div>
       </div>
-      <div style={{background:T.surface,borderRadius:'16px',boxShadow:T.cardShadow,overflow:'hidden'}}><div style={{overflowX:'auto'}}>
+      <div style={{background:T.surface,borderRadius:'20px',boxShadow:T.cardShadow,overflow:'hidden',border:`1px solid ${T.border}`}}><div style={{overflowX:'auto'}}>
         <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.78rem'}}>
           <thead><tr style={{background:T.surface2}}>{[t.date,t.type,t.category,t.description,t.amount].map((h,i)=>(<th key={i} style={{padding:'10px 12px',color:T.textMuted,fontWeight:'600',fontSize:'0.68rem',textAlign:'start',whiteSpace:'nowrap'}}>{h}</th>))}</tr></thead>
           <tbody>{filtered.length===0&&<tr><td colSpan={5} style={{padding:'2rem',textAlign:'center',color:T.textMuted}}>{t.noData}</td></tr>}
@@ -975,13 +986,13 @@ function ReportsInner({data,lang,t,T}){
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
       <div style={{display:'flex',gap:'8px'}}><button onClick={handleCSV} style={{display:'flex',alignItems:'center',gap:'6px',padding:'10px 16px',borderRadius:'12px',border:'none',background:`linear-gradient(135deg,${T.goldDark},${T.gold})`,color:'#fff',fontWeight:'700',fontSize:'0.82rem',cursor:'pointer',fontFamily:'inherit'}}><Download size={13}/>{t.exportCSV}</button></div>
-      <div style={{background:T.surface,borderRadius:'16px',boxShadow:T.cardShadow,overflow:'hidden'}}><div style={{overflowX:'auto'}}>
+      <div style={{background:T.surface,borderRadius:'20px',boxShadow:T.cardShadow,overflow:'hidden',border:`1px solid ${T.border}`}}><div style={{overflowX:'auto'}}>
         <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.8rem'}}>
           <thead><tr style={{background:T.surface2}}>{[lang==='ar'?'الشهر':'Month',t.totalIncome,t.totalExpenses,t.balance].map((h,i)=>(<th key={i} style={{padding:'10px 12px',color:T.textMuted,fontWeight:'600',fontSize:'0.68rem',textAlign:'start'}}>{h}</th>))}</tr></thead>
           <tbody>{monthData.map((row,i)=>(<tr key={i} style={{borderTop:`1px solid ${T.border}`}}><td style={{padding:'10px 12px',fontWeight:'600',color:T.text}}>{row.label}</td><td style={{padding:'10px 12px',color:T.success,fontWeight:'600'}}>{fmtC(row.inc,lang)}</td><td style={{padding:'10px 12px',color:T.danger,fontWeight:'600'}}>{fmtC(row.exp,lang)}</td><td style={{padding:'10px 12px',fontWeight:'800',color:row.net>=0?T.success:T.danger}}>{fmtC(row.net,lang)}</td></tr>))}</tbody>
         </table>
       </div></div>
-      <div style={{background:T.surface,borderRadius:'16px',padding:'14px',boxShadow:T.cardShadow}}>
+      <div style={{background:T.surface,borderRadius:'20px',padding:'14px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
         <ResponsiveContainer width="100%" height={160}><BarChart data={monthData} margin={{top:0,right:0,left:-20,bottom:0}}><CartesianGrid strokeDasharray="3 3" stroke={T.border}/><XAxis dataKey="label" tick={{fontSize:9,fill:T.textMuted}} axisLine={false} tickLine={false}/><YAxis tick={{fontSize:9,fill:T.textMuted}} axisLine={false} tickLine={false} tickFormatter={v=>fmt(v)}/><Tooltip formatter={v=>fmtC(v,lang)} contentStyle={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:'10px',color:T.text,fontSize:'0.78rem'}}/><Bar dataKey="net" radius={[5,5,0,0]}>{monthData.map((d,i)=><Cell key={i} fill={d.net>=0?T.gold:T.danger}/>)}</Bar></BarChart></ResponsiveContainer>
       </div>
     </div>
@@ -992,7 +1003,7 @@ function ActivityLogPage({data,lang,t,T,cal='gregory'}){
   const logs=(data.activityLog||[]).slice().sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
   const ac={'أضاف':T.success,'عدّل':T.warning,'حذف':T.danger,'دفع':T.info,'added':T.success,'edited':T.warning,'deleted':T.danger,'paid':T.info};
   return(
-    <div style={{background:T.surface,borderRadius:'16px',boxShadow:T.cardShadow,overflow:'hidden'}}>
+    <div style={{background:T.surface,borderRadius:'20px',boxShadow:T.cardShadow,overflow:'hidden',border:`1px solid ${T.border}`}}>
       <div style={{padding:'14px',borderBottom:`1px solid ${T.border}`,display:'flex',alignItems:'center',gap:'8px'}}><Activity size={14} color={T.gold}/><span style={{color:T.text,fontWeight:'700',fontSize:'0.85rem'}}>{t.activityLog}</span><Badge color={T.info}>{logs.length}</Badge></div>
       {logs.length===0&&<p style={{textAlign:'center',padding:'2rem',color:T.textMuted,fontSize:'0.85rem'}}>{t.noData}</p>}
       {logs.map(log=>{const dt=new Date(log.timestamp);const c=ac[log.action]||T.textMuted;return(
