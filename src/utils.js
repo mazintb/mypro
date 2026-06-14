@@ -1,8 +1,9 @@
 export const genId=()=>`${Date.now()}_${Math.random().toString(36).substr(2,6)}`;
 export const todayStr=()=>new Date().toISOString().split('T')[0];
 export const daysUntil=d=>{if(!d)return null;const dt=new Date(d);if(isNaN(dt.getTime()))return null;return Math.ceil((dt-new Date())/86400000);};
-export const num=v=>{const n=typeof v==='number'?v:parseFloat(v);return Number.isFinite(n)?n:0;};
-export const fmt=n=>Math.round(num(n)).toLocaleString('ar-SA');
+const toWestern=s=>String(s).replace(/[٠-٩]/g,d=>d.charCodeAt(0)-0x660+'').replace(/[۰-۹]/g,d=>d.charCodeAt(0)-0x6F0+'');
+export const num=v=>{const n=typeof v==='number'?v:parseFloat(toWestern(v));return Number.isFinite(n)?n:0;};
+export const fmt=n=>Math.round(num(n)).toLocaleString('en-US');
 export const fmtC=(n,lang)=>`${fmt(n)} ${lang==='ar'?'ريال':'SAR'}`;
 export const fmtDate=(d,lang,cal='gregory')=>{
   if(!d)return '—';

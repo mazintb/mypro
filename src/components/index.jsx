@@ -17,11 +17,19 @@ export function Field({label,children,error,T}){
   );
 }
 
+const toWesternDigits=s=>String(s).replace(/[٠-٩]/g,d=>d.charCodeAt(0)-0x660+'').replace(/[۰-۹]/g,d=>d.charCodeAt(0)-0x6F0+'');
 export function Inp({value,onChange,type='text',placeholder='',T=DARK,error}){
   const [focused,setFocused]=useState(false);
+  const isNum=type==='number';
+  const handleChange=e=>{
+    if(isNum&&onChange){
+      const norm=toWesternDigits(e.target.value);
+      onChange({...e,target:{...e.target,value:norm}});
+    }else{onChange&&onChange(e);}
+  };
   return(
     <>
-      <input type={type} value={value||''} onChange={onChange} placeholder={placeholder}
+      <input type={isNum?'text':type} inputMode={isNum?'decimal':undefined} value={value||''} onChange={handleChange} placeholder={placeholder}
         style={{background:focused?T.surface:T.inputBg,border:`1.5px solid ${focused?T.gold:(error?'#FF3B30':T.border)}`,borderRadius:'12px',color:T.text,padding:'12px 14px',fontSize:'0.9rem',width:'100%',boxSizing:'border-box',fontFamily:'inherit',outline:'none',transition:'all 0.18s',boxShadow:focused?`0 0 0 3px ${T.gold}20`:'none'}}
         onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}/>
       <style>{`input::placeholder{color:${T.textDim||'#3a5478'}!important}`}</style>
