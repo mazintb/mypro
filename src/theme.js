@@ -1,23 +1,27 @@
 export const DARK = {
-  bg:'#040a16', surface:'#0a1628', surface2:'#0f2038',
-  border:'#1c3458', borderGold:'#c9a84c2e',
-  gold:'#cbac57', goldLight:'#ead591', goldDark:'#8a6520',
-  text:'#eaf2ff', textMuted:'#6b8bba', textDim:'#33507a',
-  success:'#34d667', danger:'#ff5247', warning:'#ffcf2e', info:'#2a93ff',
-  tabBar:'rgba(10,22,40,0.82)', inputBg:'#0d1c34',
-  cardShadow:'0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px -12px rgba(2,8,20,0.9)',
-  glassCard:'rgba(255,255,255,0.045)', glassBorder:'rgba(255,255,255,0.08)',
+  bg:'#040b19', surface:'#091828', surface2:'#0d2038',
+  border:'#1a3352', borderGold:'#c9a84c26',
+  gold:'#c9a84c', goldLight:'#e2c97a', goldDark:'#8a6500',
+  text:'#edf5ff', textMuted:'#5f7fa6', textDim:'#2c4a6a',
+  success:'#30d158', danger:'#ff453a', warning:'#ffd60a', info:'#0a84ff',
+  purple:'#bf5af2', teal:'#5ac8fa',
+  tabBar:'rgba(4,11,25,0.88)', inputBg:'#0b1b30',
+  cardShadow:'0 1px 0 rgba(255,255,255,0.05) inset, 0 12px 40px -8px rgba(0,0,0,0.7)',
+  glassCard:'rgba(255,255,255,0.03)', glassBorder:'rgba(255,255,255,0.07)',
+  headerBg:'rgba(4,11,25,0.88)',
 };
 
 export const LIGHT = {
-  bg:'#EBEDF1', surface:'#FFFFFF', surface2:'#F4F5F8',
-  border:'#DCDEE4', borderGold:'#9A6E0D55',
-  gold:'#9A6E0D', goldLight:'#C4860E', goldDark:'#6b4a08',
-  text:'#16181D', textMuted:'#5C6270', textDim:'#A6AAB5',
-  success:'#1E8A3C', danger:'#D7261A', warning:'#B85C00', info:'#0060CE',
-  tabBar:'rgba(248,248,252,0.85)', inputBg:'#F1F2F6',
-  cardShadow:'0 1px 0 rgba(255,255,255,0.7) inset, 0 6px 18px -10px rgba(20,28,48,0.22), 0 0 0 1px rgba(20,28,48,0.05)',
-  glassCard:'rgba(255,255,255,0.96)', glassBorder:'rgba(20,28,48,0.08)',
+  bg:'#f2f2f7', surface:'#ffffff', surface2:'#f2f2f7',
+  border:'#e0e0e8', borderGold:'#9A6E0D44',
+  gold:'#8a6500', goldLight:'#b88200', goldDark:'#5c4400',
+  text:'#1c1c1e', textMuted:'#636366', textDim:'#aeaeb2',
+  success:'#1c8a38', danger:'#d4261a', warning:'#c05400', info:'#0060ce',
+  purple:'#8944ab', teal:'#0089a0',
+  tabBar:'rgba(242,242,247,0.92)', inputBg:'#f0f0f5',
+  cardShadow:'0 1px 0 rgba(255,255,255,0.8) inset, 0 4px 16px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)',
+  glassCard:'rgba(255,255,255,0.95)', glassBorder:'rgba(0,0,0,0.06)',
+  headerBg:'rgba(242,242,247,0.92)',
 };
 
 export function useTheme(isDark){ return isDark?DARK:LIGHT; }
