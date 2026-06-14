@@ -735,9 +735,9 @@ function OperationsPage({data,setData,lang,t,T,logActivity,currentUser,canDelete
         <div style={{marginRight:'auto'}}><AddBtn onClick={openAdd} label={lang==='ar'?'عملية جديدة':'New'} T={T}/></div>
       </div>
       {filtered.length===0&&<EmptyState icon="⚙️" title={lang==='ar'?'لا توجد عمليات':'No operations yet'} subtitle={lang==='ar'?'سجّل الصيانة والفواتير والاشتراكات':'Log maintenance, invoices and subscriptions'} T={T}/>}
-      {filtered.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(item=>(
-        <div key={item.id} style={{background:paidFlash===item.id?T.success+'18':T.surface,borderRadius:'14px',padding:'12px',boxShadow:T.cardShadow,display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap',border:`1.5px solid ${paidFlash===item.id?T.success:T.border}`,transition:'all 0.4s ease'}}>
-          <div style={{width:'36px',height:'36px',borderRadius:'10px',background:T.surface2,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',flexShrink:0}}>{icons[item.type]||'📌'}</div>
+      {filtered.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)).map(item=>{const sc=sColor[item.status]||T.textMuted;return(
+        <div key={item.id} style={{background:paidFlash===item.id?T.success+'18':T.surface,borderRadius:'14px',padding:'12px',boxShadow:T.cardShadow,display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap',border:`1.5px solid ${paidFlash===item.id?T.success:sc+'44'}`,borderInlineStart:`4px solid ${paidFlash===item.id?T.success:sc}`,transition:'all 0.4s ease'}}>
+          <div style={{width:'36px',height:'36px',borderRadius:'10px',background:sc+'18',border:`1px solid ${sc}30`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'1.1rem',flexShrink:0}}>{icons[item.type]||'📌'}</div>
           <div style={{flex:1,minWidth:'120px'}}>
             <div style={{display:'flex',alignItems:'center',gap:'5px',flexWrap:'wrap'}}><p style={{margin:0,fontSize:'0.82rem',fontWeight:'600',color:T.text}}>{item.description}</p><Badge color={sColor[item.status]||T.textMuted}>{item.status==='paid'?(lang==='ar'?'مدفوع':'Paid'):item.status==='pending'?(lang==='ar'?'معلق':'Pending'):(lang==='ar'?'متأخر':'Late')}</Badge></div>
             <div style={{display:'flex',gap:'6px',marginTop:'2px',flexWrap:'wrap',fontSize:'0.68rem',color:T.textMuted}}>
@@ -752,7 +752,7 @@ function OperationsPage({data,setData,lang,t,T,logActivity,currentUser,canDelete
             </div>
           </div>
         </div>
-      ))}
+      );})}
       {modal&&<Modal title={lang==='ar'?'إضافة عملية':'New Operation'} onClose={()=>setModal(false)} T={T}>
         <Field label={t.opType} error={errors.type}><div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'6px',marginBottom:'4px'}}>
           {Object.entries(ot).map(([k,v])=>(<button key={k} onClick={()=>setForm(f=>({...f,type:k}))} style={{padding:'10px 4px',borderRadius:'12px',border:`1.5px solid ${form.type===k?T.gold:T.border}`,background:form.type===k?T.gold+'22':'transparent',color:form.type===k?T.gold:T.textMuted,cursor:'pointer',fontSize:'0.75rem',fontFamily:'inherit',display:'flex',flexDirection:'column',alignItems:'center',gap:'3px'}}><span>{icons[k]}</span><span>{v}</span></button>))}
@@ -937,7 +937,7 @@ function TransactionsInner({data,setData,lang,t,T,logActivity,currentUser}){
   return(
     <div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px'}}>
-        {[{l:t.totalIncome,v:fmtC(tIn,lang),c:T.success},{l:t.totalExpenses,v:fmtC(tOut,lang),c:T.danger},{l:t.balance,v:fmtC(tIn-tOut,lang),c:tIn>=tOut?T.success:T.danger}].map((s,i)=>(<div key={i} style={{background:T.surface,borderRadius:'14px',padding:'10px',textAlign:'center',boxShadow:T.cardShadow}}><p style={{margin:0,fontSize:'0.64rem',color:T.textMuted}}>{s.l}</p><p style={{margin:0,fontWeight:'800',fontSize:'0.78rem',color:s.c}}>{s.v}</p></div>))}
+        {[{l:t.totalIncome,v:fmtC(tIn,lang),c:T.success},{l:t.totalExpenses,v:fmtC(tOut,lang),c:T.danger},{l:t.balance,v:fmtC(tIn-tOut,lang),c:tIn>=tOut?T.success:T.danger}].map((s,i)=>(<div key={i} style={{background:T.surface,borderRadius:'16px',padding:'10px',textAlign:'center',boxShadow:T.cardShadow,border:`1px solid ${T.border}`,borderTop:`3px solid ${s.c}`}}><p style={{margin:0,fontSize:'0.64rem',color:T.textMuted}}>{s.l}</p><p style={{margin:0,fontWeight:'800',fontSize:'0.78rem',color:s.c}}>{s.v}</p></div>))}
       </div>
       <div style={{display:'flex',gap:'6px',alignItems:'center'}}>
         <div style={{display:'flex',gap:'2px',background:T.surface2,borderRadius:'10px',padding:'2px'}}>
