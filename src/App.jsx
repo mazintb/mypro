@@ -23,7 +23,7 @@ import {
 } from "recharts";
 
 // ═══ DASHBOARD ═══
-function Dashboard({data,lang,t,T,cal='gregory'}){
+function Dashboard({data,lang,t,T,cal='gregory',navigate}){
   const re=data.realEstate||[],co=data.companies||[],ve=data.vehicles||[],iv=data.investments||[],tr=data.transactions||[];
 
   const {totalAssets,mInc,mExp}=useMemo(()=>{
@@ -133,10 +133,16 @@ function Dashboard({data,lang,t,T,cal='gregory'}){
       })()}
       {/* KPIs */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
-        <StatCard label={lang==='ar'?'الدخل الشهري':'Monthly Income'} value={fmtC(mInc,lang)} icon={TrendingUp} color={T.success} T={T}/>
-        <StatCard label={lang==='ar'?'المصاريف الشهرية':'Monthly Expenses'} value={fmtC(mExp,lang)} icon={TrendingDown} color={T.danger} T={T}/>
-        <StatCard label={lang==='ar'?'صافي شهري':'Net Monthly'} value={fmtC(mInc-mExp,lang)} iconText='ر' color={mInc>=mExp?T.success:T.danger} T={T}/>
-        <StatCard label={t.totalAssets} value={fmtC(totalAssets,lang)} icon={Briefcase} color={T.gold} T={T}/>
+        {[
+          {label:lang==='ar'?'الدخل الشهري':'Monthly Income',value:fmtC(mInc,lang),icon:TrendingUp,color:T.success,to:'finance'},
+          {label:lang==='ar'?'المصاريف الشهرية':'Monthly Expenses',value:fmtC(mExp,lang),icon:TrendingDown,color:T.danger,to:'finance'},
+          {label:lang==='ar'?'صافي شهري':'Net Monthly',value:fmtC(mInc-mExp,lang),iconText:'ر',color:mInc>=mExp?T.success:T.danger,to:'finance'},
+          {label:t.totalAssets,value:fmtC(totalAssets,lang),icon:Briefcase,color:T.gold,to:'realEstate'},
+        ].map((c,i)=>(
+          <button key={i} onClick={()=>navigate&&navigate(c.to)} className="kpi-card-btn" style={{background:'none',border:'none',padding:0,textAlign:'inherit',cursor:'pointer',fontFamily:'inherit',borderRadius:'18px',display:'block',width:'100%'}}>
+            <StatCard label={c.label} value={c.value} icon={c.icon} iconText={c.iconText} color={c.color} T={T}/>
+          </button>
+        ))}
       </div>
       {/* Installments & Liabilities */}
       {liabCount>0&&(
@@ -416,7 +422,7 @@ function RealEstatePage({data,setData,lang,t,T,logActivity,canDelete,cal='gregor
     </div>
   );
 }
-function CompaniesPage({data,setData,lang,t,T,logActivity,canDelete}){
+function CompaniesPage({data,setData,lang,t,T,logActivity,canDelete,cal='gregory'}){
   const [modal,setModal]=useState(null),[confirm,setConfirm]=useState(null),[form,setForm]=useState({}),[errors,setErrors]=useState({});
   const items=data.companies||[];
   const openAdd=()=>{setForm({name:'',type:'',companyStatus:'active',ownership:100,capital:'',monthlyRevenue:'',monthlyExpense:'',employees:[],financing:{type:'installment',purchasePrice:'',downPayment:'',balanceToInstall:'',monthlyInstallment:'',totalMonths:'',payments:[]},notes:''});setErrors({});setModal('add');};
@@ -625,7 +631,7 @@ function VehiclesPage({data,setData,lang,t,T,logActivity,canDelete,cal='gregory'
   );
 }
 
-function InvestmentsPage({data,setData,lang,t,T,logActivity,canDelete}){
+function InvestmentsPage({data,setData,lang,t,T,logActivity,canDelete,cal='gregory'}){
   const [modal,setModal]=useState(null),[confirm,setConfirm]=useState(null),[form,setForm]=useState({}),[errors,setErrors]=useState({}),[typeFilter,setTypeFilter]=useState('all');
   const items=data.investments||[];const it=lang==='ar'?INV_T.ar:INV_T.en;
   const icons={stocks:'📈',gold:'🥇',currencies:'💱',funds:'🏗️',crypto:'₿',startup:'🚀',other:'💡'};
@@ -827,7 +833,7 @@ function LoansGivenPage({data,setData,lang,t,T,logActivity,canDelete,cal='gregor
   );
 }
 
-function FinancialPage({data,lang,t,T}){
+function FinancialPage({data,lang,t,T,cal='gregory'}){
   const re=data.realEstate||[],co=data.companies||[],iv=data.investments||[],tr=data.transactions||[];
   const propROI=re.map(p=>{let ar=0;if(p.hasUnits)ar=(p.units||[]).filter(u=>u.status==='occupied').reduce((s,u)=>{let r=num(u.rent?.amount);if(u.rent?.frequency==='monthly')r*=12;if(u.rent?.frequency==='quarterly')r*=4;return s+r;},0);else if(p.status==='occupied'){let r=num(p.rent?.amount);if(p.rent?.frequency==='monthly')r*=12;if(p.rent?.frequency==='quarterly')r*=4;ar=r;}const roi=num(p.value)>0?((ar/num(p.value))*100):0;return{name:p.name.length>12?p.name.slice(0,12)+'..':p.name,roi:Number(roi.toFixed(1)),ar};}).filter(p=>p.ar>0).sort((a,b)=>b.roi-a.roi);
   const invPerf=iv.map(i=>{const pl=num(i.currentValue)-num(i.purchasePrice);const p=num(i.purchasePrice)>0?((pl/num(i.purchasePrice))*100):0;return{name:i.name.length>14?i.name.slice(0,14)+'...':i.name,pl,pct:Number(p.toFixed(1))};}).sort((a,b)=>b.pct-a.pct);
@@ -869,7 +875,7 @@ function FinanceTabPage({data,setData,lang,t,T,logActivity,currentUser,canDelete
   const [sub,setSub]=useState('expenses');
   const tabs=[{id:'expenses',label:lang==='ar'?'المصاريف':'Expenses'},{id:'transactions',label:lang==='ar'?'المعاملات':'Transactions'},{id:'financial',label:lang==='ar'?'الذكاء المالي':'Financial Intel'},{id:'reports',label:lang==='ar'?'التقارير':'Reports'}];
   const cats=data.customCategories||DEF_CATS_AR;
-  const props={data,setData,lang,t,T,logActivity,currentUser,canDelete};
+  const props={data,setData,lang,t,T,logActivity,currentUser,canDelete,cal};
   return(
     <div>
       <SubTabs tabs={tabs} active={sub} onChange={setSub} T={T}/>
@@ -927,7 +933,7 @@ function ExpensesInner({data,setData,lang,t,T,logActivity,currentUser,canDelete,
   );
 }
 
-function TransactionsInner({data,setData,lang,t,T,logActivity,currentUser}){
+function TransactionsInner({data,setData,lang,t,T,logActivity,currentUser,cal='gregory'}){
   const [modal,setModal]=useState(false),[typeF,setTypeF]=useState('all'),[form,setForm]=useState({}),[errors,setErrors]=useState({});
   const items=data.transactions||[];
   const openAdd=()=>{setForm({date:todayStr(),type:'income',amount:'',category:'',description:''});setErrors({});setModal(true);};
@@ -970,7 +976,7 @@ function TransactionsInner({data,setData,lang,t,T,logActivity,currentUser}){
   );
 }
 
-function ReportsInner({data,lang,t,T}){
+function ReportsInner({data,lang,t,T,cal='gregory'}){
   const tr=data.transactions||[];
   const ex=data.expenses||[];
   const months=Array.from({length:6},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-5+i);return{m:d.getMonth(),y:d.getFullYear(),label:lang==='ar'?MONTHS_AR[d.getMonth()]:MONTHS_EN[d.getMonth()]};});
@@ -1177,7 +1183,6 @@ export default function App(){
   const role=userProfile?.role||'viewer';
   const canDelete=role==='owner';
   const currentUser={id:userProfile?.uid,name:userProfile?.name||'مستخدم'};
-  const pageProps={data,setData,lang,t,T,logActivity,currentUser,canDelete,cal};
 
   const spinner=msg=>(<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:T.bg,fontFamily:'-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif'}}><div style={{textAlign:'center'}}><div style={{width:'52px',height:'52px',background:`linear-gradient(135deg,${T.goldDark},${T.gold})`,borderRadius:'16px',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px',boxShadow:`0 8px 24px ${T.gold}40`}}><div style={{width:'24px',height:'24px',border:'3px solid rgba(255,255,255,0.3)',borderTopColor:'#fff',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/></div><p style={{color:T.textMuted,fontSize:'0.82rem',margin:0,fontWeight:'500'}}>{msg}</p></div><style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style></div>);
 
@@ -1231,6 +1236,7 @@ export default function App(){
     if(['realEstate','companies','vehicles','investments'].includes(page)) setLastAssetPage(page);
     if(['operations','loansGiven'].includes(page)) setLastOpsPage(page);
   };
+  const pageProps={data,setData,lang,t,T,logActivity,currentUser,canDelete,cal,navigate};
   const activeTab=['realEstate','companies','vehicles','investments'].includes(activePage)?'assets':['operations','loansGiven'].includes(activePage)?'operations':['activityLog','userManagement'].includes(activePage)?'more':activePage;
   const onTabPress=(id)=>{
     if(id==='more'){setMoreOpen(v=>!v);return;}
@@ -1273,6 +1279,8 @@ export default function App(){
         select option{background:${T.surface};color:${T.text}}
         @media print{header,footer{display:none!important}}
         main > *{animation:fadeIn 0.28s cubic-bezier(0.32,0.72,0,1)}
+        .kpi-card-btn:active>div{transform:scale(0.97);transition:transform 0.1s}
+        .kpi-card-btn>div{transition:transform 0.15s}
       `}</style>
 
       {/* ── HEADER ── */}
@@ -1317,6 +1325,22 @@ export default function App(){
                 <span style={{fontSize:'0.7rem',fontWeight:'800'}}>{alertCount}</span>
               </button>
             )}
+            <button onClick={()=>setLang(l=>l==='ar'?'en':'ar')} title={lang==='ar'?'English':'عربي'} style={{
+              display:'flex',alignItems:'center',justifyContent:'center',
+              width:'34px',height:'34px',borderRadius:'10px',
+              border:`1px solid ${T.border}`,background:T.surface2,
+              cursor:'pointer',color:T.textMuted,fontSize:'0.7rem',fontWeight:'700',fontFamily:'inherit',
+            }}>
+              {lang==='ar'?'EN':'ع'}
+            </button>
+            <button onClick={toggleCal} title={cal==='hijri'?(lang==='ar'?'تبديل للميلادي':'Switch to Gregorian'):(lang==='ar'?'تبديل للهجري':'Switch to Hijri')} style={{
+              display:'flex',alignItems:'center',justifyContent:'center',
+              width:'34px',height:'34px',borderRadius:'10px',
+              border:`1px solid ${T.border}`,background:T.surface2,
+              cursor:'pointer',color:T.textMuted,
+            }}>
+              <Calendar size={15}/>
+            </button>
             <button onClick={()=>setIsDark(d=>!d)} style={{
               display:'flex',alignItems:'center',justifyContent:'center',
               width:'34px',height:'34px',borderRadius:'10px',
