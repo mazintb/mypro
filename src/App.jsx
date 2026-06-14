@@ -119,7 +119,7 @@ function Dashboard({data,lang,t,T,cal='gregory',navigate}){
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
                   <span style={{color:'rgba(255,255,255,0.75)',fontSize:'0.7rem',fontWeight:'600'}}>{lang==='ar'?'معدل التوفير الشهري':'Monthly Savings Rate'}</span>
                   <div style={{display:'flex',alignItems:'center',gap:'5px'}}>
-                    <span style={{color:rateColor,fontSize:'0.85rem',fontWeight:'900'}}>{savingRate}%</span>
+                    <span style={{color:rateColor,fontSize:'0.85rem',fontWeight:'900'}}>{lang==='ar'?savingRate.toLocaleString('ar-SA')+'٪':savingRate+'%'}</span>
                     <span style={{background:'rgba(255,255,255,0.15)',color:rateColor,fontSize:'0.62rem',fontWeight:'700',padding:'1px 6px',borderRadius:'6px'}}>{rateLabel}</span>
                   </div>
                 </div>
@@ -214,8 +214,8 @@ function Dashboard({data,lang,t,T,cal='gregory',navigate}){
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
         <div style={{background:T.surface,borderRadius:'20px',padding:'14px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
           <p style={{color:T.text,fontWeight:'700',fontSize:'0.78rem',margin:'0 0 8px'}}>{t.assetDistribution}</p>
-          {pieData.length>0?(<><ResponsiveContainer width="100%" height={110}><PieChart><Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={3} dataKey="value">{pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip formatter={v=>fmtC(v,lang)} contentStyle={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:'10px',color:T.text,fontSize:'0.75rem'}}/></PieChart></ResponsiveContainer>
-          <div>{pieData.map((d,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:'0.68rem',marginBottom:'2px'}}><div style={{display:'flex',alignItems:'center',gap:'4px'}}><span style={{width:'7px',height:'7px',borderRadius:'50%',background:PIE_COLORS[i%PIE_COLORS.length],display:'inline-block'}}/><span style={{color:T.textMuted}}>{d.name}</span></div><span style={{color:T.text,fontWeight:'700'}}>{pct(d.value,totalAssets)}%</span></div>))}</div></>):<p style={{color:T.textMuted,textAlign:'center',fontSize:'0.78rem',padding:'1rem'}}>{t.noData}</p>}
+          {pieData.length>0?(<><ResponsiveContainer width="100%" height={110}><PieChart><Pie data={pieData} cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={3} dataKey="value">{pieData.map((_,i)=><Cell key={i} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}</Pie><Tooltip formatter={(v,name)=>[fmtC(v,lang),name]} contentStyle={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:'10px',fontSize:'0.75rem'}} labelStyle={{color:T.text,fontWeight:'700',display:'none'}} itemStyle={{color:T.text}}/></PieChart></ResponsiveContainer>
+          <div>{pieData.map((d,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:'0.68rem',marginBottom:'2px'}}><div style={{display:'flex',alignItems:'center',gap:'4px'}}><span style={{width:'7px',height:'7px',borderRadius:'50%',background:PIE_COLORS[i%PIE_COLORS.length],display:'inline-block'}}/><span style={{color:T.textMuted}}>{d.name}</span></div><span style={{color:T.text,fontWeight:'700'}}>{lang==='ar'?Number(pct(d.value,totalAssets)).toLocaleString('ar-SA',{maximumFractionDigits:1})+'٪':pct(d.value,totalAssets)+'%'}</span></div>))}</div></>):<p style={{color:T.textMuted,textAlign:'center',fontSize:'0.78rem',padding:'1rem'}}>{t.noData}</p>}
         </div>
         <div style={{background:T.surface,borderRadius:'20px',padding:'14px',boxShadow:T.cardShadow,border:`1px solid ${T.border}`}}>
           <p style={{color:T.text,fontWeight:'700',fontSize:'0.78rem',margin:'0 0 8px'}}>{t.recentTransactions}</p>
